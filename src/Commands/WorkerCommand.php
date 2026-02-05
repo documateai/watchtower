@@ -3,8 +3,6 @@
 namespace NathanPhelps\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Contracts\Queue\Factory as QueueFactory;
-use Illuminate\Queue\Worker;
 use Illuminate\Queue\WorkerOptions;
 use Illuminate\Support\Facades\Redis;
 use NathanPhelps\Watchtower\Models\Worker as WorkerModel;
@@ -46,7 +44,7 @@ class WorkerCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(QueueFactory $queue, Worker $worker): int
+    public function handle(): int
     {
         $this->workerId = $this->option('worker-id') ?? $this->generateWorkerId();
         $connection = config('watchtower.supervisors.default.connection', 'redis');
@@ -56,6 +54,9 @@ class WorkerCommand extends Command
 
         // Register this worker if not already registered
         $this->registerWorker($queueName);
+
+        // Get the queue worker from Laravel's container (properly bound with all dependencies)
+        $worker = $this->laravel['queue.worker'];
 
         // Build worker options
         $options = $this->buildWorkerOptions();
