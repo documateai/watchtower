@@ -14,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use NathanPhelps\Watchtower\Commands\PruneJobsCommand;
 use NathanPhelps\Watchtower\Commands\RestartCommand;
 use NathanPhelps\Watchtower\Commands\SupervisorCommand;
+use NathanPhelps\Watchtower\Commands\TerminateCommand;
 use NathanPhelps\Watchtower\Commands\WorkerCommand;
 use NathanPhelps\Watchtower\Services\JobMonitor;
 use NathanPhelps\Watchtower\Services\MetricsCollector;
@@ -144,6 +145,7 @@ class WatchtowerServiceProvider extends ServiceProvider
                 SupervisorCommand::class,
                 PruneJobsCommand::class,
                 RestartCommand::class,
+                TerminateCommand::class,
             ]);
         }
     }

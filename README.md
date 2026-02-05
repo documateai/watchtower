@@ -116,6 +116,18 @@ Options:
 
 Workers will finish processing their current job, then restart with fresh code.
 
+### Terminating All Processes
+
+Stop the supervisor and all workers (similar to `horizon:terminate`):
+
+```bash
+php artisan watchtower:terminate
+```
+
+Options:
+
+- `--wait` - Wait for all workers to finish before returning
+
 ### Accessing the Dashboard
 
 Visit `/watchtower` in your browser. By default, the dashboard is only accessible in local environments. Configure the gate in your `AuthServiceProvider` for production:

@@ -10,6 +10,7 @@ All notable changes to `watchtower` will be documented in this file.
 - **Worker Management** - Start, stop, pause, resume workers from web UI
 - **Queue Auto-Discovery** - Set `'queue' => '*'` to automatically detect all queues
 - **Zero-Downtime Restarts** - `watchtower:restart` command for graceful worker restarts
+- **Graceful Termination** - `watchtower:terminate` command to stop all processes
 - **Cross-Platform Support** - Works on Windows, Linux, and macOS
 - **Job Tracking** - Full lifecycle (pending → processing → completed/failed)
 - **Failed Job Management** - View exceptions, retry failed jobs, delete records

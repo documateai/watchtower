@@ -45,6 +45,12 @@ class SupervisorCommand extends Command
         // Main supervisor loop
         while ($this->running) {
             try {
+                // Check for terminate signal
+                if ($this->shouldTerminate()) {
+                    $this->info('Received terminate signal');
+                    break;
+                }
+
                 $this->supervise($workerManager, $supervisorName, $config);
             } catch (\Throwable $e) {
                 $this->error("Supervisor error: {$e->getMessage()}");
@@ -154,5 +160,22 @@ class SupervisorCommand extends Command
             $this->info("[{$supervisor}] Active workers: {$workerCount}");
             $lastOutput = time();
         }
+    }
+
+    /**
+     * Check if the supervisor should terminate.
+     */
+    protected function shouldTerminate(): bool
+    {
+        $connection = config('watchtower.redis_connection', 'default');
+        $terminateAt = \Illuminate\Support\Facades\Redis::connection($connection)->get('watchtower:terminate');
+
+        if ($terminateAt) {
+            // Clear the terminate flag so next start works normally
+            \Illuminate\Support\Facades\Redis::connection($connection)->del('watchtower:terminate');
+            return true;
+        }
+
+        return false;
     }
 }
