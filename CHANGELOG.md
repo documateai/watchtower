@@ -8,6 +8,7 @@ All notable changes to `watchtower` will be documented in this file.
 
 - **Queue Monitoring Dashboard** - Real-time job tracking with auto-refresh
 - **Worker Management** - Start, stop, pause, resume workers from web UI
+- **Queue Auto-Discovery** - Set `'queue' => '*'` to automatically detect all queues
 - **Cross-Platform Support** - Works on Windows, Linux, and macOS
 - **Job Tracking** - Full lifecycle (pending → processing → completed/failed)
 - **Failed Job Management** - View exceptions, retry failed jobs, delete records

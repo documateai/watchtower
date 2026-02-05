@@ -104,14 +104,41 @@ class JobMonitor
      */
     protected function extractJobId($event): string
     {
-        // Try to get job ID from the event's job object
-        if (isset($event->job) && method_exists($event->job, 'getJobId')) {
-            return $event->job->getJobId();
+        // For JobQueued events, the ID is directly on the event
+        if ($event instanceof JobQueued) {
+            // $event->id is the job ID for JobQueued
+            if (isset($event->id)) {
+                return (string) $event->id;
+            }
+        }
+
+        // For JobProcessing/JobProcessed/JobFailed events, get from job object
+        if (isset($event->job)) {
+            if (method_exists($event->job, 'getJobId')) {
+                $jobId = $event->job->getJobId();
+                if ($jobId) {
+                    return (string) $jobId;
+                }
+            }
+            
+            // Try uuid() method (Redis driver)
+            if (method_exists($event->job, 'uuid')) {
+                $uuid = $event->job->uuid();
+                if ($uuid) {
+                    return (string) $uuid;
+                }
+            }
         }
 
         // Try to get from payload
-        if (isset($event->payload()['id'])) {
-            return (string) $event->payload()['id'];
+        if (method_exists($event, 'payload')) {
+            $payload = $event->payload();
+            if (isset($payload['id'])) {
+                return (string) $payload['id'];
+            }
+            if (isset($payload['uuid'])) {
+                return (string) $payload['uuid'];
+            }
         }
 
         // Fallback: generate a unique ID
