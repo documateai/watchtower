@@ -79,18 +79,23 @@ class MetricsCollector
      */
     public function getAverageDurations(): Collection
     {
-        return Job::select(
-            'queue',
-            DB::raw('AVG(TIMESTAMPDIFF(SECOND, started_at, completed_at)) as avg_duration')
-        )
-            ->withStatus(Job::STATUS_COMPLETED)
+        // Use database-agnostic approach - fetch jobs and calculate in PHP
+        $jobs = Job::withStatus(Job::STATUS_COMPLETED)
             ->whereNotNull('started_at')
             ->whereNotNull('completed_at')
-            ->groupBy('queue')
-            ->get()
-            ->mapWithKeys(fn ($item) => [
-                $item->queue => round($item->avg_duration ?? 0, 2),
-            ]);
+            ->select('queue', 'started_at', 'completed_at')
+            ->get();
+
+        return $jobs->groupBy('queue')
+            ->map(function ($queueJobs) {
+                $totalSeconds = $queueJobs->sum(function ($job) {
+                    return $job->completed_at->diffInSeconds($job->started_at);
+                });
+                $avgSeconds = $queueJobs->count() > 0 
+                    ? $totalSeconds / $queueJobs->count() 
+                    : 0;
+                return round($avgSeconds, 2);
+            });
     }
 
     /**
