@@ -61,6 +61,9 @@ class WorkerCommand extends Command
         // Build worker options
         $options = $this->buildWorkerOptions();
 
+        // Register event listeners for console output
+        $this->registerJobEventListeners();
+
         // Main worker loop with polling-based control
         while (! $this->shouldStop) {
             // Check for control commands
@@ -250,5 +253,41 @@ class WorkerCommand extends Command
         // Clear any pending commands
         $connection = config('watchtower.redis_connection', 'default');
         Redis::connection($connection)->del($this->getCommandKey());
+    }
+
+    /**
+     * Register event listeners for console output.
+     */
+    protected function registerJobEventListeners(): void
+    {
+        $command = $this;
+
+        // Listen for job processing started
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Queue\Events\JobProcessing::class,
+            function ($event) use ($command) {
+                $jobName = $event->job->resolveName();
+                $command->line("<fg=yellow>Processing:</> {$jobName}");
+            }
+        );
+
+        // Listen for job completed
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Queue\Events\JobProcessed::class,
+            function ($event) use ($command) {
+                $jobName = $event->job->resolveName();
+                $command->info("✓ Completed: {$jobName}");
+            }
+        );
+
+        // Listen for job failed
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Queue\Events\JobFailed::class,
+            function ($event) use ($command) {
+                $jobName = $event->job->resolveName();
+                $message = $event->exception->getMessage();
+                $command->error("✗ Failed: {$jobName} - {$message}");
+            }
+        );
     }
 }

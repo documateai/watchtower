@@ -259,19 +259,29 @@ class WorkerManager
         $connection = config('queue.default', 'redis');
 
         // Method 1: Scan Redis for queue keys
-        if (in_array($connection, ['redis', 'sync'])) {
+        if ($connection === 'redis') {
             try {
                 $redisConnection = config('watchtower.redis_connection', 'default');
-                $prefix = config('database.redis.options.prefix', '');
+                $redis = Redis::connection($redisConnection);
                 
-                // Get all keys matching queue patterns
-                $keys = Redis::connection($redisConnection)->keys('*queues:*');
+                // Try multiple Redis key patterns used by Laravel
+                $patterns = [
+                    '*queues:*',
+                    'queues:*',
+                    '*:queues:*',
+                    'laravel_database_queues:*',
+                ];
                 
-                foreach ($keys as $key) {
-                    // Remove prefix and extract queue name
-                    $key = str_replace($prefix, '', $key);
-                    if (preg_match('/queues:([^:]+)/', $key, $matches)) {
-                        $queues->push($matches[1]);
+                foreach ($patterns as $pattern) {
+                    $keys = $redis->keys($pattern);
+                    foreach ($keys as $key) {
+                        // Extract queue name from various patterns like:
+                        // - queues:default
+                        // - laravel_database_queues:default
+                        // - prefix:queues:emails:notify
+                        if (preg_match('/queues:([^:]+)/', $key, $matches)) {
+                            $queues->push($matches[1]);
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -279,7 +289,39 @@ class WorkerManager
             }
         }
 
-        // Method 2: Get queues from Watchtower job records
+        // Method 2: Get queues from Laravel's database queue table (if using database driver)
+        if ($connection === 'database') {
+            try {
+                $queueTable = config('queue.connections.database.table', 'jobs');
+                $dbQueues = \DB::table($queueTable)
+                    ->distinct()
+                    ->pluck('queue')
+                    ->filter();
+                $queues = $queues->merge($dbQueues);
+            } catch (\Throwable $e) {
+                // Database queue table doesn't exist or query failed
+            }
+        }
+
+        // Method 3: Get queues from failed_jobs table
+        try {
+            $failedQueues = \DB::table('failed_jobs')
+                ->distinct()
+                ->pluck('queue')
+                ->filter()
+                ->map(function ($queue) {
+                    // failed_jobs stores as "connection:queue", extract just queue name
+                    if (str_contains($queue, ':')) {
+                        return explode(':', $queue)[1] ?? $queue;
+                    }
+                    return $queue;
+                });
+            $queues = $queues->merge($failedQueues);
+        } catch (\Throwable $e) {
+            // failed_jobs table doesn't exist
+        }
+
+        // Method 4: Get queues from Watchtower job records
         try {
             $jobQueues = \NathanPhelps\Watchtower\Models\Job::distinct()
                 ->pluck('queue')
@@ -289,7 +331,7 @@ class WorkerManager
             // Job query failed, continue
         }
 
-        // Method 3: Get queues from active workers
+        // Method 5: Get queues from active workers
         try {
             $workerQueues = Worker::distinct()
                 ->pluck('queue')
@@ -297,6 +339,18 @@ class WorkerManager
             $queues = $queues->merge($workerQueues);
         } catch (\Throwable $e) {
             // Worker query failed, continue
+        }
+
+        // Method 6: Check queue configuration for defined queues
+        try {
+            $queueConfig = config('queue.connections', []);
+            foreach ($queueConfig as $connName => $connConfig) {
+                if (isset($connConfig['queue'])) {
+                    $queues->push($connConfig['queue']);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Config read failed
         }
 
         // Always include 'default' queue
