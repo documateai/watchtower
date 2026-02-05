@@ -1,5 +1,5 @@
 {
-    "name": "nathanphelps/watchtower",
+    "name": "documateai/watchtower",
     "description": "Cross-platform Laravel queue monitoring and worker management",
     "keywords": [
         "laravel",
