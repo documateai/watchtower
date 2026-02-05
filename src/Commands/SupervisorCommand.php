@@ -67,6 +67,14 @@ class SupervisorCommand extends Command
     protected function supervise(WorkerManager $workerManager, string $supervisorName, array $config): void
     {
         $queues = (array) $config['queue'];
+        
+        // Auto-discover queues if set to '*'
+        if ($queues === ['*'] || in_array('*', $queues, true)) {
+            $queues = $workerManager->discoverQueues();
+            if (empty($queues)) {
+                $queues = ['default'];
+            }
+        }
 
         // Clean up stale workers
         $staleCount = $workerManager->cleanupStaleWorkers();

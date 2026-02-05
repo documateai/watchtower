@@ -62,7 +62,9 @@ return [
     'supervisors' => [
         'default' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            'queue' => '*',           // Auto-discover all queues!
+            // Or specify explicit queues:
+            // 'queue' => ['default', 'emails', 'notifications'],
             'min_processes' => 1,
             'max_processes' => 10,
             'tries' => 3,
@@ -84,9 +86,12 @@ php artisan watchtower:supervisor
 
 The supervisor will:
 
+- **Auto-discover all queues** in your application (Redis keys, job records)
 - Maintain the minimum number of workers
 - Restart failed workers automatically
 - Monitor worker health via heartbeats
+
+> **Tip:** Set `'queue' => '*'` in your config (default) to automatically detect and process all queues. Or specify explicit queues: `'queue' => ['default', 'emails', 'high']`
 
 ### Manual Worker Control
 

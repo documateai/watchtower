@@ -121,7 +121,9 @@ return [
             'connection' => env('WATCHTOWER_SUPERVISOR_CONNECTION', 'redis'),
 
             // The queues this supervisor should process
-            'queue' => ['default'],
+            // Use '*' to auto-discover all queues, or specify an array:
+            // 'queue' => ['default', 'emails', 'notifications'],
+            'queue' => env('WATCHTOWER_SUPERVISOR_QUEUE', '*'),
 
             // How to distribute workers across queues
             // Options: 'simple' (all workers process all queues),

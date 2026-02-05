@@ -247,4 +247,61 @@ class WorkerManager
             $this->stopWorker($worker->worker_id);
         }
     }
+
+    /**
+     * Discover all queues in use by scanning Redis and database.
+     * 
+     * @return array<string> List of queue names
+     */
+    public function discoverQueues(): array
+    {
+        $queues = collect();
+        $connection = config('queue.default', 'redis');
+
+        // Method 1: Scan Redis for queue keys
+        if (in_array($connection, ['redis', 'sync'])) {
+            try {
+                $redisConnection = config('watchtower.redis_connection', 'default');
+                $prefix = config('database.redis.options.prefix', '');
+                
+                // Get all keys matching queue patterns
+                $keys = Redis::connection($redisConnection)->keys('*queues:*');
+                
+                foreach ($keys as $key) {
+                    // Remove prefix and extract queue name
+                    $key = str_replace($prefix, '', $key);
+                    if (preg_match('/queues:([^:]+)/', $key, $matches)) {
+                        $queues->push($matches[1]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Redis scan failed, continue with other methods
+            }
+        }
+
+        // Method 2: Get queues from Watchtower job records
+        try {
+            $jobQueues = \NathanPhelps\Watchtower\Models\Job::distinct()
+                ->pluck('queue')
+                ->filter();
+            $queues = $queues->merge($jobQueues);
+        } catch (\Throwable $e) {
+            // Job query failed, continue
+        }
+
+        // Method 3: Get queues from active workers
+        try {
+            $workerQueues = Worker::distinct()
+                ->pluck('queue')
+                ->filter();
+            $queues = $queues->merge($workerQueues);
+        } catch (\Throwable $e) {
+            // Worker query failed, continue
+        }
+
+        // Always include 'default' queue
+        $queues->push('default');
+
+        return $queues->unique()->sort()->values()->toArray();
+    }
 }
