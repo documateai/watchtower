@@ -43,8 +43,8 @@ Watchtower is a Laravel package that provides queue monitoring and worker manage
 │                          └──────────────┘                    │
 │                                                               │
 │  ┌──────────────┐       ┌──────────────┐                    │
-│  │  Supervisor  │◀─────▶│    Redis     │◀────┐              │
-│  │   Command    │       │ (Control Ch.)│     │              │
+│  │  Supervisor  │◀─────▶│  CommandBus  │◀────┐              │
+│  │   Command    │       │(Redis or DB) │     │              │
 │  └──────┬───────┘       └──────────────┘     │              │
 │         │                                     │              │
 │         │ spawns/manages                      │ polls        │
@@ -71,7 +71,7 @@ Watchtower is a Laravel package that provides queue monitoring and worker manage
 - **Frontend:** Vue.js 3, Inertia.js 1.0+
 - **Process Management:** Symfony Process component
 - **Database:** Laravel's default database connection
-- **Cache/Control:** Redis
+- **Control Channel:** CommandBus (Redis or Database driver)
 - **Build Tools:** Vite
 
 ---
@@ -140,7 +140,7 @@ class WorkerManager
 
 **Worker Process:**
 - Runs standard Laravel queue:work loop
-- Polls Redis every 3 seconds for control commands
+- Polls the CommandBus every 3 seconds for control commands
 - Commands stored as: `watchtower:worker:{id}:command`
 - Available commands: `stop`, `pause`, `resume`
 
@@ -156,7 +156,7 @@ php artisan watchtower:supervisor
 **Responsibilities:**
 - Maintains desired worker count per queue
 - Restarts failed workers automatically
-- Sends control commands via Redis
+- Sends control commands via CommandBus
 - Monitors worker health
 - Persists worker state to database
 
@@ -369,13 +369,17 @@ class Worker extends Model
 
 ## Worker Control Protocol
 
-### Polling-Based Control
+### Polling-Based Control via CommandBus
+
+Worker control is abstracted behind a `CommandBusInterface` (`src/Contracts/CommandBusInterface.php`) with two drivers:
+- **Redis** (default) - uses `Redis::connection()->set/get/del`
+- **Database** - uses `watchtower_commands` table with TTL-based expiration
 
 **How it works:**
-1. Supervisor writes command to Redis: `SET watchtower:worker:{id}:command "stop"`
-2. Worker checks Redis every 3 seconds during job processing
+1. Supervisor writes command via CommandBus: `$commandBus->put("watchtower:worker:{id}:command", "stop")`
+2. Worker polls CommandBus every 3 seconds during job processing
 3. Worker reads command and acts accordingly
-4. Worker removes command from Redis after executing
+4. Worker removes command via `$commandBus->forget()` after executing
 
 **Command Types:**
 - `stop` - Finish current job, then exit
@@ -385,14 +389,15 @@ class Worker extends Model
 **Worker Loop:**
 ```php
 // In WorkerCommand.php
-public function handle()
+public function handle(CommandBusInterface $commandBus)
 {
+    $this->commandBus = $commandBus;
     $workerId = $this->generateWorkerId();
     $this->register($workerId);
 
     while (true) {
         // Check for commands
-        $command = Redis::get("watchtower:worker:{$workerId}:command");
+        $command = $this->commandBus->get("watchtower:worker:{$workerId}:command");
 
         if ($command === 'stop') {
             $this->gracefulShutdown();
@@ -418,6 +423,7 @@ public function handle()
 **Benefits of this approach:**
 - ✅ Cross-platform (Windows, Linux, macOS)
 - ✅ No PCNTL dependency
+- ✅ Redis optional (database driver available)
 - ✅ Simple to implement and debug
 - ✅ Reliable (no signal handling edge cases)
 - ⚠️ 1-3 second response delay (acceptable for worker management)
@@ -516,6 +522,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Command Bus Driver
+    |--------------------------------------------------------------------------
+    |
+    | The driver used for worker control commands.
+    | Supported: "redis", "database"
+    |
+    */
+    'command_bus' => env('WATCHTOWER_COMMAND_BUS', 'redis'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Polling Interval
     |--------------------------------------------------------------------------
     |
@@ -589,7 +606,7 @@ return [
 **Deliverables:**
 - `WorkerManager` service using Symfony Process
 - `WorkerCommand` (artisan command for worker process)
-- Redis polling mechanism for worker control
+- CommandBus polling mechanism for worker control (Redis or Database driver)
 - `SupervisorCommand` to manage worker lifecycle
 - Worker heartbeat system
 

@@ -38,7 +38,9 @@ class Worker extends Model
      * Worker status constants.
      */
     const STATUS_RUNNING = 'running';
+
     const STATUS_PAUSED = 'paused';
+
     const STATUS_STOPPED = 'stopped';
 
     /**

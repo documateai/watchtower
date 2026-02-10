@@ -220,9 +220,10 @@ The dashboard is fully responsive:
 
 ### Workers Not Responding to Commands
 
-1. Verify Redis connection
-2. Check `watchtower.redis_connection` config
-3. Wait for polling interval (1-3s)
+1. Check `watchtower.command_bus` config -- is it `redis` or `database`?
+2. If `redis`: verify Redis connection and `watchtower.redis_connection` config
+3. If `database`: verify `watchtower_commands` table exists (run migrations)
+4. Wait for polling interval (1-3s)
 
 ### Stats Not Updating
 

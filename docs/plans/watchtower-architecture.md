@@ -23,8 +23,8 @@ Technical overview of how Watchtower works under the hood.
 │                          └──────────────┘                    │
 │                                                               │
 │  ┌──────────────┐       ┌──────────────┐                    │
-│  │  Supervisor  │◀─────▶│    Redis     │◀────┐              │
-│  │   Command    │       │ (Control Ch.)│     │              │
+│  │  Supervisor  │◀─────▶│  CommandBus  │◀────┐              │
+│  │   Command    │       │(Redis or DB) │     │              │
 │  └──────┬───────┘       └──────────────┘     │              │
 │         │                                     │              │
 │         │ spawns/manages                      │ polls        │
@@ -81,8 +81,8 @@ Manages worker processes using Symfony Process:
 $process = new Process(['php', 'artisan', 'watchtower:worker', $queue]);
 $process->start();
 
-// Send stop command via Redis
-Redis::set("watchtower:worker:{$id}:command", "stop");
+// Send stop command via CommandBus (Redis or Database)
+$commandBus->put("watchtower:worker:{$id}:command", "stop");
 ```
 
 ### 3. Worker Command
@@ -93,16 +93,16 @@ The actual worker process that:
 
 1. Registers itself in database
 2. Processes jobs from queue
-3. Polls Redis every 3s for commands
+3. Polls the CommandBus every 3s for commands
 4. Sends heartbeat updates
 
 ```php
 while (!$this->shouldStop) {
-    $command = Redis::get("watchtower:worker:{$id}:command");
-    
+    $command = $this->commandBus->get("watchtower:worker:{$id}:command");
+
     if ($command === 'stop') break;
     if ($command === 'pause') $this->waitWhilePaused();
-    
+
     $worker->runNextJob(...);
     $this->sendHeartbeat();
 }
@@ -127,15 +127,20 @@ Orchestrates worker lifecycle:
 
 Laravel Horizon uses PCNTL signals (`SIGTERM`, `SIGUSR2`) for worker control. PCNTL is **Unix-only** - it doesn't exist on Windows.
 
-### Watchtower's Solution: Redis Polling
+### Watchtower's Solution: CommandBus Polling
+
+Worker control is abstracted behind a `CommandBusInterface` with two drivers:
+
+- **Redis** (default) - uses `Redis::connection()->set/get/del`
+- **Database** - uses the `watchtower_commands` table with TTL-based expiration
 
 ```
-┌───────────────┐    SET command     ┌───────────────┐
-│   Dashboard   │ ─────────────────▶ │     Redis     │
-│   (Browser)   │                    │               │
+┌───────────────┐    put(key, cmd)   ┌───────────────┐
+│   Dashboard   │ ─────────────────▶ │  CommandBus   │
+│   (Browser)   │                    │(Redis or DB)  │
 └───────────────┘                    └───────┬───────┘
                                              │
-                                     GET every 3s
+                                     get() every 3s
                                              │
                                              ▼
                                      ┌───────────────┐
@@ -148,16 +153,17 @@ Laravel Horizon uses PCNTL signals (`SIGTERM`, `SIGUSR2`) for worker control. PC
 
 1. User clicks "Stop Worker" in dashboard
 2. Controller calls `WorkerManager::stopWorker($id)`
-3. WorkerManager writes to Redis: `watchtower:worker:{id}:command = "stop"`
-4. Worker polls Redis during job processing loop
+3. WorkerManager writes via CommandBus: `put("watchtower:worker:{id}:command", "stop")`
+4. Worker polls CommandBus during job processing loop
 5. Worker reads command, finishes current job, exits gracefully
 
 **Trade-offs:**
 
-| Aspect | PCNTL Signals | Redis Polling |
-|--------|---------------|---------------|
+| Aspect | PCNTL Signals | CommandBus Polling |
+|--------|---------------|---------------------|
 | Response Time | Instant | 1-3 seconds |
 | Platform Support | Unix only | Cross-platform |
+| Redis Required | N/A | No (database driver available) |
 | Complexity | Signal handlers | Simple loop |
 | Reliability | Edge cases | Predictable |
 
@@ -208,6 +214,22 @@ CREATE TABLE watchtower_workers (
     INDEX (status, last_heartbeat)
 );
 ```
+
+### `watchtower_commands`
+
+Used by the `database` command bus driver to store worker control commands.
+
+```sql
+CREATE TABLE watchtower_commands (
+    id BIGINT PRIMARY KEY,
+    key VARCHAR(255) UNIQUE,       -- Command key (e.g. watchtower:worker:{id}:command)
+    value TEXT,                     -- Command value (stop, pause, resume, etc.)
+    expires_at TIMESTAMP,          -- TTL-based expiration
+    created_at TIMESTAMP
+);
+```
+
+Expired rows are cleaned inline during `get()` calls.
 
 ---
 

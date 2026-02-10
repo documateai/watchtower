@@ -71,18 +71,39 @@ Days to keep failed job records.
 
 ---
 
+## Command Bus
+
+### `command_bus`
+
+**Type:** `string`
+**Default:** `'redis'`
+**Env:** `WATCHTOWER_COMMAND_BUS`
+
+The driver used for worker control commands (stop, pause, restart, etc).
+
+| Driver | Description |
+|--------|-------------|
+| `redis` | Uses Redis for command storage (default, fastest) |
+| `database` | Uses `watchtower_commands` table (no Redis required) |
+
+```php
+'command_bus' => env('WATCHTOWER_COMMAND_BUS', 'redis'),
+```
+
+---
+
 ## Polling Intervals
 
 ### `worker_poll_interval`
 
-**Type:** `int`  
-**Default:** `3`  
+**Type:** `int`
+**Default:** `3`
 **Env:** `WATCHTOWER_WORKER_POLL_INTERVAL`
 
-How often workers check Redis for control commands (seconds).
+How often workers check the command bus for control commands (seconds).
 
 - Lower = faster response to stop/pause
-- Higher = less Redis load
+- Higher = less load
 - Recommended: 1-5 seconds
 
 ### `dashboard_poll_interval`
@@ -104,19 +125,19 @@ How often the dashboard polls for updates (milliseconds).
 
 ### `redis_connection`
 
-**Type:** `string`  
-**Default:** `'default'`  
+**Type:** `string`
+**Default:** `'default'`
 **Env:** `WATCHTOWER_REDIS_CONNECTION`
 
-Redis connection for worker control commands. Must match a connection in `config/database.php`.
+Redis connection used when `command_bus` is `redis`. Must match a connection in `config/database.php`.
 
 ### `database_connection`
 
-**Type:** `string|null`  
-**Default:** `null`  
+**Type:** `string|null`
+**Default:** `null`
 **Env:** `WATCHTOWER_DATABASE_CONNECTION`
 
-Database connection for job/worker records. `null` uses the default connection.
+Database connection for job/worker records and the `database` command bus driver. `null` uses the default connection.
 
 ---
 
@@ -212,15 +233,17 @@ return [
     'path' => 'admin/queues',
     'middleware' => ['web', 'auth', 'can:access-admin'],
     'gate' => 'viewWatchtower',
-    
+
+    'command_bus' => 'redis', // or 'database'
+
     'retention' => [
         'completed' => 3,
         'failed' => 14,
     ],
-    
+
     'worker_poll_interval' => 2,
     'dashboard_poll_interval' => 2000,
-    
+
     'redis_connection' => 'default',
     'database_connection' => null,
     

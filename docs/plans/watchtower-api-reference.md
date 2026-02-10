@@ -89,11 +89,34 @@ php artisan watchtower:prune --all
 
 ## Services
 
+### CommandBusInterface
+
+**Interface:** `NathanPhelps\Watchtower\Contracts\CommandBusInterface`
+
+Abstraction for the worker control channel. Registered as a singleton, resolved based on `watchtower.command_bus` config.
+
+**Implementations:**
+
+| Class | Driver | Description |
+|-------|--------|-------------|
+| `RedisCommandBus` | `redis` | Uses `Redis::connection()` for command storage |
+| `DatabaseCommandBus` | `database` | Uses `watchtower_commands` table with TTL expiration |
+
+**Methods:**
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `put(string $key, string $value, int $ttl = 300)` | `void` | Store a command with TTL |
+| `get(string $key)` | `?string` | Retrieve a command (null if missing/expired) |
+| `forget(string $key)` | `void` | Delete a command |
+
+---
+
 ### WorkerManager
 
 **Class:** `NathanPhelps\Watchtower\Services\WorkerManager`
 
-Manages worker process lifecycle.
+Manages worker process lifecycle. Uses `CommandBusInterface` for sending control commands.
 
 ```php
 use NathanPhelps\Watchtower\Services\WorkerManager;

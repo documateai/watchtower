@@ -20,7 +20,7 @@ All notable changes to `watchtower` will be documented in this file.
 ### Core Components
 
 - `WorkerManager` service using Symfony Process for cross-platform worker spawning
-- `WorkerCommand` artisan command with Redis polling for stop/pause/resume
+- `WorkerCommand` artisan command with CommandBus polling for stop/pause/resume
 - `SupervisorCommand` for automatic worker lifecycle management
 - `MetricsCollector` for aggregating job statistics
 - `PruneJobsCommand` for cleanup of old job records
@@ -36,8 +36,9 @@ All notable changes to `watchtower` will be documented in this file.
 
 ### Technical Details
 
-- Redis-based control plane for worker commands
+- CommandBus-based control plane for worker commands (Redis or Database driver)
 - Database-backed job and worker state
 - No PCNTL dependency (polling-based control)
+- Redis optional (set `WATCHTOWER_COMMAND_BUS=database` to use database driver)
 - Laravel 11/12 compatible
 - Comprehensive documentation in `docs/plans/`

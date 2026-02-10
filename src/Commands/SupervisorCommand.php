@@ -3,6 +3,7 @@
 namespace NathanPhelps\Watchtower\Commands;
 
 use Illuminate\Console\Command;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
 use NathanPhelps\Watchtower\Models\Worker;
 use NathanPhelps\Watchtower\Services\WorkerManager;
 
@@ -24,11 +25,14 @@ class SupervisorCommand extends Command
      */
     protected bool $running = true;
 
+    protected CommandBusInterface $commandBus;
+
     /**
      * Execute the console command.
      */
-    public function handle(WorkerManager $workerManager): int
+    public function handle(WorkerManager $workerManager, CommandBusInterface $commandBus): int
     {
+        $this->commandBus = $commandBus;
         $supervisorName = $this->option('supervisor');
         $config = config("watchtower.supervisors.{$supervisorName}");
 
@@ -39,7 +43,7 @@ class SupervisorCommand extends Command
         }
 
         $this->info("Starting Watchtower supervisor [{$supervisorName}]");
-        $this->info("Queue: ".implode(', ', (array) $config['queue']));
+        $this->info('Queue: '.implode(', ', (array) $config['queue']));
         $this->info("Min processes: {$config['min_processes']}, Max processes: {$config['max_processes']}");
 
         // Main supervisor loop
@@ -73,7 +77,7 @@ class SupervisorCommand extends Command
     protected function supervise(WorkerManager $workerManager, string $supervisorName, array $config): void
     {
         $queues = (array) $config['queue'];
-        
+
         // Auto-discover queues if set to '*'
         if ($queues === ['*'] || in_array('*', $queues, true)) {
             $queues = $workerManager->discoverQueues();
@@ -144,9 +148,9 @@ class SupervisorCommand extends Command
     /**
      * Get the next queue to assign a worker to based on balance strategy.
      *
-     * @param array $queues Available queues
-     * @param int $index Worker index for round-robin
-     * @param string $balance Balance strategy ('simple' or 'auto')
+     * @param  array  $queues  Available queues
+     * @param  int  $index  Worker index for round-robin
+     * @param  string  $balance  Balance strategy ('simple' or 'auto')
      * @return string Queue name(s) - single queue for 'auto', comma-separated for 'simple'
      */
     protected function getNextQueue(array $queues, int $index, string $balance = 'simple'): string
@@ -179,12 +183,12 @@ class SupervisorCommand extends Command
      */
     protected function shouldTerminate(): bool
     {
-        $connection = config('watchtower.redis_connection', 'default');
-        $terminateAt = \Illuminate\Support\Facades\Redis::connection($connection)->get('watchtower:terminate');
+        $terminateAt = $this->commandBus->get('watchtower:terminate');
 
         if ($terminateAt) {
             // Clear the terminate flag so next start works normally
-            \Illuminate\Support\Facades\Redis::connection($connection)->del('watchtower:terminate');
+            $this->commandBus->forget('watchtower:terminate');
+
             return true;
         }
 

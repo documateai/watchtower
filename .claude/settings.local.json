@@ -12,7 +12,15 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nComplete Phase 1: Core Infrastructure\n\nImplement foundational components for Watchtower package:\n\n- Set up Laravel package structure with proper namespacing\n- Add composer.json for Laravel 11/12 compatibility\n- Create configuration file with all settings\n- Implement database migrations for jobs and workers tables\n- Create Job and Worker Eloquent models with helpers\n- Implement JobMonitor service for queue event tracking\n- Create WatchtowerServiceProvider with event listeners\n- Add README, LICENSE, CHANGELOG, and .gitignore\n\nAll Phase 1 deliverables complete. Jobs are now tracked in database\nwhen dispatched. Ready for Phase 2: Worker Management.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push origin master)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(composer format:*)",
+      "Bash(vendor/bin/pint:*)",
+      "Bash(php:*)",
+      "Bash(composer install:*)",
+      "Bash(composer test:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

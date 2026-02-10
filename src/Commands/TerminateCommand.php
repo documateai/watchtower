@@ -3,7 +3,7 @@
 namespace NathanPhelps\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Redis;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
 use NathanPhelps\Watchtower\Models\Worker;
 
 class TerminateCommand extends Command
@@ -22,22 +22,19 @@ class TerminateCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(CommandBusInterface $commandBus): int
     {
         $this->info('Broadcasting terminate signal to all Watchtower processes...');
 
-        $connection = config('watchtower.redis_connection', 'default');
-
         // Set a global terminate flag that supervisor checks
-        Redis::connection($connection)->set('watchtower:terminate', now()->timestamp);
+        $commandBus->put('watchtower:terminate', (string) now()->timestamp);
 
         // Send terminate signal to all running workers
         $workers = Worker::where('status', Worker::STATUS_RUNNING)->get();
-        
+
         foreach ($workers as $worker) {
             $key = "watchtower:worker:{$worker->worker_id}:command";
-            Redis::connection($connection)->set($key, 'terminate');
-            Redis::connection($connection)->expire($key, 300);
+            $commandBus->put($key, 'terminate');
             $this->line("  → Sent terminate to worker [{$worker->worker_id}]");
         }
 
@@ -46,23 +43,23 @@ class TerminateCommand extends Command
 
         if ($this->option('wait')) {
             $this->info('Waiting for workers to terminate...');
-            
+
             $maxWait = 60; // seconds
             $waited = 0;
-            
+
             while ($waited < $maxWait) {
                 $running = Worker::where('status', Worker::STATUS_RUNNING)->count();
-                
+
                 if ($running === 0) {
                     $this->info('All workers have terminated.');
                     break;
                 }
-                
+
                 $this->line("  Waiting... ({$running} worker(s) still running)");
                 sleep(2);
                 $waited += 2;
             }
-            
+
             if ($waited >= $maxWait) {
                 $this->warn('Timeout waiting for workers to terminate.');
             }

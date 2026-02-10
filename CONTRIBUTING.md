@@ -19,7 +19,7 @@ Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
 - PHP 8.2+
 - Composer
-- Redis server (for testing worker control)
+- Redis server (optional -- only needed when testing the `redis` command bus driver)
 - A Laravel application for integration testing
 
 ### Running Tests
@@ -78,7 +78,7 @@ docs(readme): update installation instructions
 - Additional metrics and charts
 - Queue priority visualization
 - Worker auto-scaling algorithms
-- Alternative storage backends (beyond Redis)
+- Additional command bus drivers (e.g., file-based, APCu)
 
 ## Questions?
 

@@ -3,7 +3,7 @@
 namespace NathanPhelps\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Redis;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
 use NathanPhelps\Watchtower\Models\Worker;
 
 class RestartCommand extends Command
@@ -23,42 +23,41 @@ class RestartCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(CommandBusInterface $commandBus): int
     {
         $queue = $this->option('queue');
         $force = $this->option('force');
-        
+
         $this->info('Signaling workers to restart...');
 
         // Get all running workers
         $query = Worker::where('status', Worker::STATUS_RUNNING);
-        
+
         if ($queue) {
             $query->where('queue', $queue);
         }
-        
+
         $workers = $query->get();
 
         if ($workers->isEmpty()) {
             $this->warn('No running workers found.');
+
             return Command::SUCCESS;
         }
 
-        $connection = config('watchtower.redis_connection', 'default');
         $command = $force ? 'terminate' : 'restart';
         $restartedCount = 0;
 
         foreach ($workers as $worker) {
             $key = "watchtower:worker:{$worker->worker_id}:command";
-            Redis::connection($connection)->set($key, $command);
-            Redis::connection($connection)->expire($key, 300);
-            
+            $commandBus->put($key, $command);
+
             $this->line("  → Sent {$command} signal to worker [{$worker->worker_id}] on queue [{$worker->queue}]");
             $restartedCount++;
         }
 
         $this->newLine();
-        
+
         if ($force) {
             $this->info("Sent terminate signal to {$restartedCount} worker(s).");
             $this->comment('Workers will stop immediately after current job completes.');
@@ -68,9 +67,8 @@ class RestartCommand extends Command
         }
 
         // Also set a global restart timestamp for new workers
-        $restartTimestamp = now()->timestamp;
-        Redis::connection($connection)->set('watchtower:restart_at', $restartTimestamp);
-        
+        $commandBus->put('watchtower:restart_at', (string) now()->timestamp);
+
         $this->newLine();
         $this->info('Restart signal sent successfully.');
         $this->comment('Run "php artisan watchtower:status" to monitor worker status.');

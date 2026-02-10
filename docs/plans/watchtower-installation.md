@@ -4,7 +4,7 @@
 
 - PHP 8.2+
 - Laravel 11 or 12
-- Redis server (for worker control)
+- Redis server (optional -- only required when using the `redis` command bus driver, which is the default)
 - Node.js 18+ (for building assets, optional)
 
 ## Installation
@@ -32,10 +32,11 @@ php artisan vendor:publish --tag=watchtower-migrations
 php artisan migrate
 ```
 
-Creates two tables:
+Creates tables:
 
 - `watchtower_jobs` - Tracks all queue jobs
 - `watchtower_workers` - Tracks worker processes
+- `watchtower_commands` - Command bus storage (used when `command_bus` is `database`)
 
 ### 4. Configure Authorization
 
@@ -117,6 +118,7 @@ Configure via `.env`:
 ```env
 WATCHTOWER_PATH=watchtower
 WATCHTOWER_GATE=viewWatchtower
+WATCHTOWER_COMMAND_BUS=redis          # or 'database' if you don't have Redis
 WATCHTOWER_RETENTION_COMPLETED=7
 WATCHTOWER_RETENTION_FAILED=30
 WATCHTOWER_WORKER_POLL_INTERVAL=3
@@ -143,6 +145,7 @@ Check the [CHANGELOG](../../CHANGELOG.md) for breaking changes.
 # Remove tables
 php artisan migrate:rollback --path=database/migrations/2026_01_01_000001_create_watchtower_jobs_table.php
 php artisan migrate:rollback --path=database/migrations/2026_01_01_000002_create_watchtower_workers_table.php
+php artisan migrate:rollback --path=database/migrations/2026_01_01_000003_create_watchtower_commands_table.php
 
 # Remove package
 composer remove nathanphelps/watchtower

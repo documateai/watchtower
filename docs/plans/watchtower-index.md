@@ -35,8 +35,8 @@ Visit `/watchtower` in your browser to access the dashboard.
 | Windows Support | ❌ No | ✅ Yes |
 | Linux/macOS Support | ✅ Yes | ✅ Yes |
 | Web Dashboard | ✅ Yes | ✅ Yes |
-| Worker Control | ✅ Via signals | ✅ Via Redis polling |
+| Worker Control | ✅ Via signals | ✅ Via CommandBus polling |
 | Auto-scaling | ✅ Yes | ⚠️ Manual |
-| Redis Required | ✅ Yes | ✅ Yes |
+| Redis Required | ✅ Yes | ⚠️ Optional (database driver available) |
 
-Watchtower uses a **polling-based control mechanism** instead of PCNTL signals, making it fully cross-platform compatible.
+Watchtower uses a **polling-based control mechanism** instead of PCNTL signals, making it fully cross-platform compatible. The control channel (`CommandBusInterface`) supports both Redis and Database drivers, so Redis is not required.

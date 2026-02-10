@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Watchtower is a cross-platform Laravel package for queue monitoring and worker management. It's a Laravel Horizon alternative that uses Redis polling instead of PCNTL signals, enabling full Windows support. Published as `documateai/watchtower` on Packagist.
+Watchtower is a cross-platform Laravel package for queue monitoring and worker management. It's a Laravel Horizon alternative that uses polling instead of PCNTL signals, enabling full Windows support. Published as `documateai/watchtower` on Packagist.
 
-**Requirements:** PHP 8.2+, Laravel 11/12, Redis, Symfony Process
+**Requirements:** PHP 8.2+, Laravel 11/12, Symfony Process. Redis optional (control channel supports Redis or Database drivers).
 
 ## Commands
 
@@ -33,18 +33,19 @@ No test files exist yet. Test infrastructure is set up with PHPUnit 10/11 and Or
 
 ```
 Supervisor (long-running) → spawns Worker processes via Symfony Process
-Workers poll Redis every 3s for commands (stop/pause/resume/restart/terminate)
-Dashboard → Controllers → WorkerManager → writes commands to Redis
+Workers poll CommandBus every 3s for commands (stop/pause/resume/restart/terminate)
+Dashboard → Controllers → WorkerManager → writes commands via CommandBus
 JobMonitor listens to Laravel queue events → records to watchtower_jobs table
 ```
 
-The key design choice: **no PCNTL signals**. All worker control uses Redis keys (`watchtower:worker:{id}:command`). Workers poll, read, execute, and clear these keys. Supervisor termination uses `watchtower:terminate`.
+The key design choice: **no PCNTL signals**. All worker control uses a `CommandBusInterface` with key-value semantics (`watchtower:worker:{id}:command`). Workers poll, read, execute, and clear these keys. Supervisor termination uses `watchtower:terminate`. The command bus has two drivers: `redis` (default) and `database`, configured via `watchtower.command_bus`.
 
 ### Namespace: `NathanPhelps\Watchtower`
 
 ### Services (registered as singletons)
 
-- **WorkerManager** (`src/Services/WorkerManager.php`) - Spawns/stops workers, sends Redis commands, discovers queues from 6 sources (Redis keys, database jobs table, failed_jobs, watchtower_jobs, active workers, queue config). Cross-platform PID checking via `tasklist` (Windows) / `posix_kill` (Unix).
+- **CommandBusInterface** (`src/Contracts/CommandBusInterface.php`) - Abstraction for worker control commands (`put`/`get`/`forget`). Implementations: `RedisCommandBus` and `DatabaseCommandBus` in `src/Services/CommandBus/`. Driver selected via `watchtower.command_bus` config.
+- **WorkerManager** (`src/Services/WorkerManager.php`) - Spawns/stops workers, sends commands via CommandBus, discovers queues from 6 sources (Redis keys, database jobs table, failed_jobs, watchtower_jobs, active workers, queue config). Cross-platform PID checking via `tasklist` (Windows) / `posix_kill` (Unix).
 - **JobMonitor** (`src/Services/JobMonitor.php`) - Fail-silent event listeners for JobQueued/Processing/Processed/Failed/RetryRequested. Records job lifecycle to database.
 - **MetricsCollector** (`src/Services/MetricsCollector.php`) - Aggregates throughput, queue depth, average duration stats.
 
@@ -54,7 +55,7 @@ The key design choice: **no PCNTL signals**. All worker control uses Redis keys 
 |---|---|
 | `watchtower:supervisor` | Main long-running process, manages worker pool per config |
 | `watchtower:worker {queue}` | Individual worker, wraps Laravel's queue worker with polling control |
-| `watchtower:restart` | Zero-downtime restart via Redis signal |
+| `watchtower:restart` | Zero-downtime restart via command bus signal |
 | `watchtower:terminate` | Graceful shutdown of supervisor + all workers |
 | `watchtower:prune` | Clean up old job records per retention config |
 
@@ -69,7 +70,7 @@ Blade views + Alpine.js at `/{watchtower.path}` (default: `/watchtower`). Gate-b
 
 ### Database
 
-Two tables: `watchtower_jobs` (job tracking with status/payload/exceptions/timing) and `watchtower_workers` (PID, status, heartbeats). Configurable connection via `watchtower.database_connection`.
+Three tables: `watchtower_jobs` (job tracking with status/payload/exceptions/timing), `watchtower_workers` (PID, status, heartbeats), and `watchtower_commands` (command bus key-value store, only used when `command_bus` is `database`). Configurable connection via `watchtower.database_connection`.
 
 ## Conventions
 

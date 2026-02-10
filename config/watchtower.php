@@ -56,12 +56,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Command Bus Driver
+    |--------------------------------------------------------------------------
+    |
+    | The driver used for worker control commands (stop, pause, restart, etc).
+    | Supported: "redis", "database"
+    |
+    */
+
+    'command_bus' => env('WATCHTOWER_COMMAND_BUS', 'redis'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Worker Polling Interval
     |--------------------------------------------------------------------------
     |
-    | How often workers should check Redis for control commands (in seconds).
-    | Lower values provide faster response to stop/pause commands but increase
-    | Redis load. Recommended: 1-5 seconds.
+    | How often workers should check for control commands (in seconds).
+    | Lower values provide faster response to stop/pause commands but
+    | increase load. Recommended: 1-5 seconds.
     |
     */
 

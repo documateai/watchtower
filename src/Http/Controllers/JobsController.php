@@ -26,7 +26,7 @@ class JobsController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('payload', 'like', '%' . $request->input('search') . '%');
+            $query->where('payload', 'like', '%'.$request->input('search').'%');
         }
 
         $jobs = $query->orderBy('queued_at', 'desc')->paginate(50);

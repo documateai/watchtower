@@ -17,6 +17,9 @@ use NathanPhelps\Watchtower\Commands\StatusCommand;
 use NathanPhelps\Watchtower\Commands\SupervisorCommand;
 use NathanPhelps\Watchtower\Commands\TerminateCommand;
 use NathanPhelps\Watchtower\Commands\WorkerCommand;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
+use NathanPhelps\Watchtower\Services\CommandBus\DatabaseCommandBus;
+use NathanPhelps\Watchtower\Services\CommandBus\RedisCommandBus;
 use NathanPhelps\Watchtower\Services\JobMonitor;
 use NathanPhelps\Watchtower\Services\MetricsCollector;
 use NathanPhelps\Watchtower\Services\WorkerManager;
@@ -46,6 +49,17 @@ class WatchtowerServiceProvider extends ServiceProvider
             __DIR__.'/../config/watchtower.php',
             'watchtower'
         );
+
+        $this->app->singleton(CommandBusInterface::class, function ($app) {
+            return match ($app['config']['watchtower.command_bus']) {
+                'database' => new DatabaseCommandBus(
+                    $app['config']['watchtower.database_connection'],
+                ),
+                default => new RedisCommandBus(
+                    $app['config']['watchtower.redis_connection'] ?? 'default',
+                ),
+            };
+        });
 
         $this->app->singleton(JobMonitor::class);
         $this->app->singleton(WorkerManager::class);

@@ -112,7 +112,7 @@ class StatusCommand extends Command
         $depths->sortDesc()->each(function ($count, $queue) use ($maxNameLength) {
             $dots = str_repeat('.', $maxNameLength - strlen($queue) + 4);
             $color = $count > 0 ? 'yellow' : 'green';
-            $this->line(sprintf("    %s %s <fg=%s>%d</>", $queue, $dots, $color, $count));
+            $this->line(sprintf('    %s %s <fg=%s>%d</>', $queue, $dots, $color, $count));
         });
 
         $this->newLine();

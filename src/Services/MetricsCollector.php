@@ -91,9 +91,10 @@ class MetricsCollector
                 $totalSeconds = $queueJobs->sum(function ($job) {
                     return $job->completed_at->diffInSeconds($job->started_at);
                 });
-                $avgSeconds = $queueJobs->count() > 0 
-                    ? $totalSeconds / $queueJobs->count() 
+                $avgSeconds = $queueJobs->count() > 0
+                    ? $totalSeconds / $queueJobs->count()
                     : 0;
+
                 return round($avgSeconds, 2);
             });
     }

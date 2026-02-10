@@ -120,7 +120,7 @@ class JobMonitor
                     return (string) $jobId;
                 }
             }
-            
+
             // Try uuid() method (Redis driver)
             if (method_exists($event->job, 'uuid')) {
                 $uuid = $event->job->uuid();

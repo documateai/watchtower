@@ -21,7 +21,7 @@ Watchtower provides queue monitoring and worker management capabilities similar 
 
 - PHP 8.2+
 - Laravel 11 or 12
-- Redis (for worker control commands)
+- Redis (optional -- required only when using the default `redis` command bus driver)
 
 ## Installation
 
@@ -51,6 +51,9 @@ return [
 
     // Authorization gate
     'gate' => env('WATCHTOWER_GATE', 'viewWatchtower'),
+
+    // Command bus driver: 'redis' or 'database'
+    'command_bus' => env('WATCHTOWER_COMMAND_BUS', 'redis'),
 
     // Job retention (days)
     'retention' => [
@@ -150,12 +153,19 @@ php artisan watchtower:prune
 
 ## How It Works
 
-### Polling-Based Control
+### Polling-Based Control via CommandBus
 
-Unlike Horizon which uses PCNTL signals (Unix-only), Watchtower uses Redis for worker control:
+Unlike Horizon which uses PCNTL signals (Unix-only), Watchtower uses a `CommandBusInterface` for worker control with two drivers:
 
-1. Dashboard sends command to Redis: `SET watchtower:worker:{id}:command "stop"`
-2. Worker checks Redis every 3 seconds
+- **Redis** (default) -- fast, uses `Redis::connection()`
+- **Database** -- no Redis required, uses `watchtower_commands` table
+
+```
+WATCHTOWER_COMMAND_BUS=database  # set in .env to use database driver
+```
+
+1. Dashboard sends command via CommandBus: `$commandBus->put("watchtower:worker:{id}:command", "stop")`
+2. Worker polls the CommandBus every 3 seconds
 3. Worker reads and executes the command
 4. Worker confirms status in database
 
@@ -163,6 +173,7 @@ This approach provides:
 
 - ✅ Cross-platform compatibility
 - ✅ No PCNTL dependency
+- ✅ Redis optional (database driver available)
 - ✅ Simple debugging
 - ⚠️ 1-3 second response delay (acceptable for worker management)
 
@@ -180,6 +191,9 @@ The dashboard polls for updates every 3 seconds (configurable). This provides ne
 |---------|-------------|
 | `watchtower:supervisor` | Start the supervisor to manage workers |
 | `watchtower:worker {queue}` | Start a single worker process |
+| `watchtower:restart` | Gracefully restart all workers |
+| `watchtower:terminate` | Stop supervisor and all workers |
+| `watchtower:status` | Show current supervisor and worker status |
 | `watchtower:prune` | Prune old job records |
 
 ## License

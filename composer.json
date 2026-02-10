@@ -49,6 +49,10 @@
             ]
         }
     },
+    "scripts": {
+        "test": "phpunit",
+        "format": "pint"
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {

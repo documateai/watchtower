@@ -4,7 +4,7 @@ namespace NathanPhelps\Watchtower\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Queue\WorkerOptions;
-use Illuminate\Support\Facades\Redis;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
 use NathanPhelps\Watchtower\Models\Worker as WorkerModel;
 
 class WorkerCommand extends Command
@@ -41,11 +41,14 @@ class WorkerCommand extends Command
      */
     protected bool $shouldStop = false;
 
+    protected CommandBusInterface $commandBus;
+
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(CommandBusInterface $commandBus): int
     {
+        $this->commandBus = $commandBus;
         $this->workerId = $this->option('worker-id') ?? $this->generateWorkerId();
         $connection = config('watchtower.supervisors.default.connection', 'redis');
         $queueName = $this->argument('queue');
@@ -71,6 +74,7 @@ class WorkerCommand extends Command
 
             if ($this->paused) {
                 $this->waitWhilePaused();
+
                 continue;
             }
 
@@ -108,7 +112,7 @@ class WorkerCommand extends Command
     protected function registerWorker(string $queue): void
     {
         $worker = WorkerModel::where('worker_id', $this->workerId)->first();
-        
+
         if ($worker) {
             // Update existing record created by WorkerManager
             $worker->update([
@@ -132,20 +136,19 @@ class WorkerCommand extends Command
     }
 
     /**
-     * Check Redis for control commands.
+     * Check for control commands.
      */
     protected function checkForCommands(): void
     {
         $key = $this->getCommandKey();
-        $connection = config('watchtower.redis_connection', 'default');
-        $command = Redis::connection($connection)->get($key);
+        $command = $this->commandBus->get($key);
 
         if (! $command) {
             return;
         }
 
         // Clear the command
-        Redis::connection($connection)->del($key);
+        $this->commandBus->forget($key);
 
         switch ($command) {
             case 'stop':
@@ -265,8 +268,7 @@ class WorkerCommand extends Command
         ]);
 
         // Clear any pending commands
-        $connection = config('watchtower.redis_connection', 'default');
-        Redis::connection($connection)->del($this->getCommandKey());
+        $this->commandBus->forget($this->getCommandKey());
     }
 
     /**

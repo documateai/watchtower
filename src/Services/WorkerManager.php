@@ -5,6 +5,7 @@ namespace NathanPhelps\Watchtower\Services;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
+use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
 use NathanPhelps\Watchtower\Models\Worker;
 use Symfony\Component\Process\Process;
 
@@ -14,6 +15,10 @@ class WorkerManager
      * Active worker processes indexed by worker ID.
      */
     protected array $processes = [];
+
+    public function __construct(
+        protected CommandBusInterface $commandBus,
+    ) {}
 
     /**
      * Start a new worker process.
@@ -29,11 +34,11 @@ class WorkerManager
         // Create and start the process
         $process = new Process($command, base_path());
         $process->setTimeout(null);
-        
+
         // Start the process and capture any immediate errors
         $process->start(function ($type, $buffer) use ($workerId) {
             // Log any output from the worker process for debugging
-            if (Process::ERR === $type) {
+            if ($type === Process::ERR) {
                 \Log::error("Watchtower worker [{$workerId}] stderr: {$buffer}");
             }
         });
@@ -145,20 +150,15 @@ class WorkerManager
     }
 
     /**
-     * Send a control command to a worker via Redis.
+     * Send a control command to a worker via the command bus.
      */
     protected function sendCommand(string $workerId, string $command): void
     {
-        $key = $this->getCommandKey($workerId);
-        $connection = config('watchtower.redis_connection', 'default');
-
-        Redis::connection($connection)->set($key, $command);
-        // Set expiration to prevent stale commands
-        Redis::connection($connection)->expire($key, 300);
+        $this->commandBus->put($this->getCommandKey($workerId), $command);
     }
 
     /**
-     * Get the Redis key for worker commands.
+     * Get the key for worker commands.
      */
     public function getCommandKey(string $workerId): string
     {
@@ -250,7 +250,7 @@ class WorkerManager
 
     /**
      * Discover all queues in use by scanning Redis and database.
-     * 
+     *
      * @return array<string> List of queue names
      */
     public function discoverQueues(): array
@@ -263,7 +263,7 @@ class WorkerManager
             try {
                 $redisConnection = config('watchtower.redis_connection', 'default');
                 $redis = Redis::connection($redisConnection);
-                
+
                 // Try multiple Redis key patterns used by Laravel
                 $patterns = [
                     '*queues:*',
@@ -271,7 +271,7 @@ class WorkerManager
                     '*:queues:*',
                     'laravel_database_queues:*',
                 ];
-                
+
                 foreach ($patterns as $pattern) {
                     $keys = $redis->keys($pattern);
                     foreach ($keys as $key) {
@@ -314,6 +314,7 @@ class WorkerManager
                     if (str_contains($queue, ':')) {
                         return explode(':', $queue)[1] ?? $queue;
                     }
+
                     return $queue;
                 });
             $queues = $queues->merge($failedQueues);
