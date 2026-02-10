@@ -1,14 +1,14 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Http\Controllers;
+namespace Documateai\Watchtower\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
-use NathanPhelps\Watchtower\Models\Job;
-use NathanPhelps\Watchtower\Services\MetricsCollector;
-use NathanPhelps\Watchtower\Services\WorkerManager;
+use Documateai\Watchtower\Models\Job;
+use Documateai\Watchtower\Services\MetricsCollector;
+use Documateai\Watchtower\Services\WorkerManager;
 
 class DashboardController extends Controller
 {

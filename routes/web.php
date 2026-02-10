@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use NathanPhelps\Watchtower\Http\Controllers\DashboardController;
-use NathanPhelps\Watchtower\Http\Controllers\FailedJobsController;
-use NathanPhelps\Watchtower\Http\Controllers\JobsController;
-use NathanPhelps\Watchtower\Http\Controllers\MetricsController;
-use NathanPhelps\Watchtower\Http\Controllers\WorkersController;
+use Documateai\Watchtower\Http\Controllers\DashboardController;
+use Documateai\Watchtower\Http\Controllers\FailedJobsController;
+use Documateai\Watchtower\Http\Controllers\JobsController;
+use Documateai\Watchtower\Http\Controllers\MetricsController;
+use Documateai\Watchtower\Http\Controllers\WorkersController;
 
 /*
 |--------------------------------------------------------------------------

@@ -4,7 +4,7 @@
       "Bash(git init)",
       "Bash(git add docs/plans/2026-02-04-watchtower-design.md)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd Watchtower design document\n\nInitial design for cross-platform Laravel queue monitoring package.\nIncludes architecture, data models, worker control protocol, and\nimplementation plan.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(gh repo create nathanphelps/watchtower --public --description \"Cross-platform Laravel queue monitoring and worker management\" --source=. --remote=origin)",
+      "Bash(gh repo create documateai/watchtower --public --description \"Cross-platform Laravel queue monitoring and worker management\" --source=. --remote=origin)",
       "Bash(git push -u origin master)",
       "Bash(composer search spatie skeleton)",
       "Bash(composer show spatie/laravel-package-tools)",

@@ -1,8 +1,8 @@
 # Watchtower
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/nathanphelps/watchtower.svg?style=flat-square)](https://packagist.org/packages/nathanphelps/watchtower)
-[![PHP Version](https://img.shields.io/packagist/php-v/nathanphelps/watchtower.svg?style=flat-square)](https://packagist.org/packages/nathanphelps/watchtower)
-[![License](https://img.shields.io/packagist/l/nathanphelps/watchtower.svg?style=flat-square)](LICENSE.md)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/documateai/watchtower.svg?style=flat-square)](https://packagist.org/packages/documateai/watchtower)
+[![PHP Version](https://img.shields.io/packagist/php-v/documateai/watchtower.svg?style=flat-square)](https://packagist.org/packages/documateai/watchtower)
+[![License](https://img.shields.io/packagist/l/documateai/watchtower.svg?style=flat-square)](LICENSE.md)
 
 > Cross-platform Laravel queue monitoring and worker management dashboard
 
@@ -26,7 +26,7 @@ Watchtower provides queue monitoring and worker management capabilities similar 
 ## Installation
 
 ```bash
-composer require nathanphelps/watchtower
+composer require documateai/watchtower
 ```
 
 Publish the configuration and assets:

@@ -1,10 +1,10 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Commands;
+namespace Documateai\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
-use NathanPhelps\Watchtower\Models\Worker;
+use Documateai\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Models\Worker;
 
 class RestartCommand extends Command
 {

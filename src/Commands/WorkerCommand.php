@@ -1,11 +1,11 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Commands;
+namespace Documateai\Watchtower\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Queue\WorkerOptions;
-use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
-use NathanPhelps\Watchtower\Models\Worker as WorkerModel;
+use Documateai\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Models\Worker as WorkerModel;
 
 class WorkerCommand extends Command
 {

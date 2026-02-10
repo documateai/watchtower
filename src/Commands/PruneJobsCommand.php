@@ -1,9 +1,9 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Commands;
+namespace Documateai\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use NathanPhelps\Watchtower\Models\Job;
+use Documateai\Watchtower\Models\Job;
 
 class PruneJobsCommand extends Command
 {

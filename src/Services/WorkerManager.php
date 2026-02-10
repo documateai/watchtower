@@ -1,12 +1,12 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Services;
+namespace Documateai\Watchtower\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
-use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
-use NathanPhelps\Watchtower\Models\Worker;
+use Documateai\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Models\Worker;
 use Symfony\Component\Process\Process;
 
 class WorkerManager
@@ -324,7 +324,7 @@ class WorkerManager
 
         // Method 4: Get queues from Watchtower job records
         try {
-            $jobQueues = \NathanPhelps\Watchtower\Models\Job::distinct()
+            $jobQueues = \Documateai\Watchtower\Models\Job::distinct()
                 ->pluck('queue')
                 ->filter();
             $queues = $queues->merge($jobQueues);

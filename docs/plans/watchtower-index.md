@@ -15,7 +15,7 @@ Cross-platform Laravel queue monitoring and worker management dashboard.
 
 ```bash
 # Install package
-composer require nathanphelps/watchtower
+composer require documateai/watchtower
 
 # Publish config and run migrations
 php artisan vendor:publish --tag=watchtower-config

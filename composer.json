@@ -34,18 +34,18 @@
     },
     "autoload": {
         "psr-4": {
-            "NathanPhelps\\Watchtower\\": "src/"
+            "Documateai\\Watchtower\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "NathanPhelps\\Watchtower\\Tests\\": "tests/"
+            "Documateai\\Watchtower\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "NathanPhelps\\Watchtower\\WatchtowerServiceProvider"
+                "Documateai\\Watchtower\\WatchtowerServiceProvider"
             ]
         }
     },

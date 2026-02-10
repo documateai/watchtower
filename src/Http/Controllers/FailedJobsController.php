@@ -1,12 +1,12 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Http\Controllers;
+namespace Documateai\Watchtower\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
-use NathanPhelps\Watchtower\Models\Job;
+use Documateai\Watchtower\Models\Job;
 
 class FailedJobsController extends Controller
 {

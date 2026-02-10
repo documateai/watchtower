@@ -1,6 +1,6 @@
 # Watchtower Design Document
 
-**Package Name:** `nathanphelps/watchtower`
+**Package Name:** `documateai/watchtower`
 **Version:** 1.0.0
 **Date:** 2026-02-04
 **Purpose:** Cross-platform Laravel queue monitoring and worker management dashboard
@@ -100,7 +100,7 @@ Watchtower is a Laravel package that provides queue monitoring and worker manage
 
 **Service Class:**
 ```php
-namespace NathanPhelps\Watchtower\Services;
+namespace Documateai\Watchtower\Services;
 
 class JobMonitor
 {
@@ -123,7 +123,7 @@ class JobMonitor
 
 **Service Class:**
 ```php
-namespace NathanPhelps\Watchtower\Services;
+namespace Documateai\Watchtower\Services;
 
 use Symfony\Component\Process\Process;
 
@@ -229,7 +229,7 @@ resources/js/
 
 **Controllers:**
 ```php
-namespace NathanPhelps\Watchtower\Controllers;
+namespace Documateai\Watchtower\Controllers;
 
 class DashboardController
 {
@@ -326,7 +326,7 @@ Schema::create('watchtower_metrics', function (Blueprint $table) {
 
 **Job Model:**
 ```php
-namespace NathanPhelps\Watchtower\Models;
+namespace Documateai\Watchtower\Models;
 
 class Job extends Model
 {
@@ -348,7 +348,7 @@ class Job extends Model
 
 **Worker Model:**
 ```php
-namespace NathanPhelps\Watchtower\Models;
+namespace Documateai\Watchtower\Models;
 
 class Worker extends Model
 {

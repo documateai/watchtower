@@ -1,6 +1,6 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Contracts;
+namespace Documateai\Watchtower\Contracts;
 
 interface CommandBusInterface
 {

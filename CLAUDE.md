@@ -40,7 +40,7 @@ JobMonitor listens to Laravel queue events → records to watchtower_jobs table
 
 The key design choice: **no PCNTL signals**. All worker control uses a `CommandBusInterface` with key-value semantics (`watchtower:worker:{id}:command`). Workers poll, read, execute, and clear these keys. Supervisor termination uses `watchtower:terminate`. The command bus has two drivers: `redis` (default) and `database`, configured via `watchtower.command_bus`.
 
-### Namespace: `NathanPhelps\Watchtower`
+### Namespace: `Documateai\Watchtower`
 
 ### Services (registered as singletons)
 

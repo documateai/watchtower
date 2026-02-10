@@ -12,7 +12,7 @@
 ### 1. Install via Composer
 
 ```bash
-composer require nathanphelps/watchtower
+composer require documateai/watchtower
 ```
 
 The package will auto-register via Laravel's package discovery.
@@ -130,7 +130,7 @@ WATCHTOWER_DASHBOARD_POLL_INTERVAL=3000
 ## Upgrading
 
 ```bash
-composer update nathanphelps/watchtower
+composer update documateai/watchtower
 php artisan vendor:publish --tag=watchtower-migrations
 php artisan migrate
 ```
@@ -148,7 +148,7 @@ php artisan migrate:rollback --path=database/migrations/2026_01_01_000002_create
 php artisan migrate:rollback --path=database/migrations/2026_01_01_000003_create_watchtower_commands_table.php
 
 # Remove package
-composer remove nathanphelps/watchtower
+composer remove documateai/watchtower
 
 # Clean up config
 rm config/watchtower.php

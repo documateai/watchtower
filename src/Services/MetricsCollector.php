@@ -1,11 +1,11 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Services;
+namespace Documateai\Watchtower\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use NathanPhelps\Watchtower\Models\Job;
-use NathanPhelps\Watchtower\Models\Worker;
+use Documateai\Watchtower\Models\Job;
+use Documateai\Watchtower\Models\Worker;
 
 class MetricsCollector
 {

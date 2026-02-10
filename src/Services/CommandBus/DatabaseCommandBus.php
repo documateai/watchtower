@@ -1,9 +1,9 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Services\CommandBus;
+namespace Documateai\Watchtower\Services\CommandBus;
 
 use Illuminate\Support\Facades\DB;
-use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Contracts\CommandBusInterface;
 
 class DatabaseCommandBus implements CommandBusInterface
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Http\Controllers;
+namespace Documateai\Watchtower\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
-use NathanPhelps\Watchtower\Services\MetricsCollector;
+use Documateai\Watchtower\Services\MetricsCollector;
 
 class MetricsController extends Controller
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace NathanPhelps\Watchtower;
+namespace Documateai\Watchtower;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -11,18 +11,18 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use NathanPhelps\Watchtower\Commands\PruneJobsCommand;
-use NathanPhelps\Watchtower\Commands\RestartCommand;
-use NathanPhelps\Watchtower\Commands\StatusCommand;
-use NathanPhelps\Watchtower\Commands\SupervisorCommand;
-use NathanPhelps\Watchtower\Commands\TerminateCommand;
-use NathanPhelps\Watchtower\Commands\WorkerCommand;
-use NathanPhelps\Watchtower\Contracts\CommandBusInterface;
-use NathanPhelps\Watchtower\Services\CommandBus\DatabaseCommandBus;
-use NathanPhelps\Watchtower\Services\CommandBus\RedisCommandBus;
-use NathanPhelps\Watchtower\Services\JobMonitor;
-use NathanPhelps\Watchtower\Services\MetricsCollector;
-use NathanPhelps\Watchtower\Services\WorkerManager;
+use Documateai\Watchtower\Commands\PruneJobsCommand;
+use Documateai\Watchtower\Commands\RestartCommand;
+use Documateai\Watchtower\Commands\StatusCommand;
+use Documateai\Watchtower\Commands\SupervisorCommand;
+use Documateai\Watchtower\Commands\TerminateCommand;
+use Documateai\Watchtower\Commands\WorkerCommand;
+use Documateai\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Services\CommandBus\DatabaseCommandBus;
+use Documateai\Watchtower\Services\CommandBus\RedisCommandBus;
+use Documateai\Watchtower\Services\JobMonitor;
+use Documateai\Watchtower\Services\MetricsCollector;
+use Documateai\Watchtower\Services\WorkerManager;
 
 class WatchtowerServiceProvider extends ServiceProvider
 {

@@ -1,13 +1,13 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Services;
+namespace Documateai\Watchtower\Services;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\JobRetryRequested;
-use NathanPhelps\Watchtower\Models\Job;
+use Documateai\Watchtower\Models\Job;
 use Throwable;
 
 class JobMonitor

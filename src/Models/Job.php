@@ -1,6 +1,6 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Models;
+namespace Documateai\Watchtower\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

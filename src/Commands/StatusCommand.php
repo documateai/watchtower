@@ -1,10 +1,10 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Commands;
+namespace Documateai\Watchtower\Commands;
 
 use Illuminate\Console\Command;
-use NathanPhelps\Watchtower\Models\Worker;
-use NathanPhelps\Watchtower\Services\MetricsCollector;
+use Documateai\Watchtower\Models\Worker;
+use Documateai\Watchtower\Services\MetricsCollector;
 
 class StatusCommand extends Command
 {

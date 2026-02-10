@@ -91,7 +91,7 @@ php artisan watchtower:prune --all
 
 ### CommandBusInterface
 
-**Interface:** `NathanPhelps\Watchtower\Contracts\CommandBusInterface`
+**Interface:** `Documateai\Watchtower\Contracts\CommandBusInterface`
 
 Abstraction for the worker control channel. Registered as a singleton, resolved based on `watchtower.command_bus` config.
 
@@ -114,12 +114,12 @@ Abstraction for the worker control channel. Registered as a singleton, resolved 
 
 ### WorkerManager
 
-**Class:** `NathanPhelps\Watchtower\Services\WorkerManager`
+**Class:** `Documateai\Watchtower\Services\WorkerManager`
 
 Manages worker process lifecycle. Uses `CommandBusInterface` for sending control commands.
 
 ```php
-use NathanPhelps\Watchtower\Services\WorkerManager;
+use Documateai\Watchtower\Services\WorkerManager;
 
 $manager = app(WorkerManager::class);
 ```
@@ -159,12 +159,12 @@ $manager->stopWorker($workerId);
 
 ### MetricsCollector
 
-**Class:** `NathanPhelps\Watchtower\Services\MetricsCollector`
+**Class:** `Documateai\Watchtower\Services\MetricsCollector`
 
 Aggregates job and worker statistics.
 
 ```php
-use NathanPhelps\Watchtower\Services\MetricsCollector;
+use Documateai\Watchtower\Services\MetricsCollector;
 
 $metrics = app(MetricsCollector::class);
 ```
@@ -200,7 +200,7 @@ $metrics = app(MetricsCollector::class);
 
 ### JobMonitor
 
-**Class:** `NathanPhelps\Watchtower\Services\JobMonitor`
+**Class:** `Documateai\Watchtower\Services\JobMonitor`
 
 Records queue events to database. Automatically registered - typically not called directly.
 
@@ -210,10 +210,10 @@ Records queue events to database. Automatically registered - typically not calle
 
 ### Job
 
-**Class:** `NathanPhelps\Watchtower\Models\Job`
+**Class:** `Documateai\Watchtower\Models\Job`
 
 ```php
-use NathanPhelps\Watchtower\Models\Job;
+use Documateai\Watchtower\Models\Job;
 
 // Scopes
 Job::withStatus('failed')->get();
@@ -254,10 +254,10 @@ $job->worker;
 
 ### Worker
 
-**Class:** `NathanPhelps\Watchtower\Models\Worker`
+**Class:** `Documateai\Watchtower\Models\Worker`
 
 ```php
-use NathanPhelps\Watchtower\Models\Worker;
+use Documateai\Watchtower\Models\Worker;
 
 // Scopes
 Worker::running()->get();

@@ -1,6 +1,6 @@
 <?php
 
-namespace NathanPhelps\Watchtower\Http\Middleware;
+namespace Documateai\Watchtower\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
