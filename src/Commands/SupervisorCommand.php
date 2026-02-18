@@ -91,7 +91,7 @@ class SupervisorCommand extends Command
             ."<fg=bright-white;bg=bright-blue> {$timestamp} </>"
             ."<fg=bright-blue;bg=blue>{$a}</>"
             ."<fg=white;bg=blue> {$queueFit}</>"
-            ."<fg=blue;bg=bright-black>{$a}</>";
+            ."<fg=blue;bg=gray>{$a}</>";
 
         // " 󰁮 " (3) + arrow (1) + " HH:MM:SS " (10) + arrow (1) + " queue______" (13) + arrow (1) = 29
         $plainWidth = 3 + 1 + 10 + 1 + (1 + self::QUEUE_WIDTH) + 1;
@@ -131,15 +131,15 @@ class SupervisorCommand extends Command
         }
 
         // All sections get backgrounds for a continuous bar look
-        // Action + dots: bright-black (dark gray) bg
+        // Action + dots: gray (dark gray) bg
         // Badge: its own colored bg (pops out)
         // Detail: black bg (slightly darker edge)
         $al = self::ARROW_LEFT;
 
         $this->line(
             "{$prefix}"
-            ."<fg=bright-white;bg=bright-black> {$action} </>"
-            ."<fg=gray;bg=bright-black>{$dots} </>"
+            ."<fg=bright-white;bg=gray> {$action} </>"
+            ."<fg=gray;bg=gray>{$dots} </>"
             ."{$badge}"
             ."<fg={$detailFg};bg=black> {$detailCol} </>"
             ."<fg=black>{$al}</>"
@@ -219,9 +219,9 @@ class SupervisorCommand extends Command
         $eye = self::ICON_EYE;
         $this->line(
             "<fg=black;bg=cyan> {$eye} </>"
-            ."<fg=cyan;bg=bright-black>{$a}</>"
-            .'<fg=gray;bg=bright-black>'.str_repeat('─', 75).'</>'
-            ."<fg=bright-black>{$al}</>"
+            ."<fg=cyan;bg=gray>{$a}</>"
+            .'<fg=gray;bg=gray>'.str_repeat('─', 75).'</>'
+            ."<fg=gray>{$al}</>"
         );
     }
 
