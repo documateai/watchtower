@@ -7,7 +7,6 @@ use Documateai\Watchtower\Contracts\CommandBusInterface;
 use Documateai\Watchtower\Models\Job;
 use Documateai\Watchtower\Models\Worker;
 use Documateai\Watchtower\Services\WorkerManager;
-use Symfony\Component\Console\Terminal;
 
 class SupervisorCommand extends Command
 {
@@ -211,8 +210,7 @@ class SupervisorCommand extends Command
             ->limit(50)
             ->get();
 
-        // Terminal width for dot-filling (fall back to 80)
-        $termWidth = (new Terminal())->getWidth() ?: 80;
+        $termWidth = 80;
 
         foreach ($newJobs as $job) {
             $name = $job->getJobClass() ?? $job->job_id;
