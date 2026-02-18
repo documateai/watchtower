@@ -7,6 +7,7 @@ use Documateai\Watchtower\Contracts\CommandBusInterface;
 use Documateai\Watchtower\Models\Job;
 use Documateai\Watchtower\Models\Worker;
 use Documateai\Watchtower\Services\WorkerManager;
+use Symfony\Component\Console\Terminal;
 
 class SupervisorCommand extends Command
 {
@@ -210,6 +211,9 @@ class SupervisorCommand extends Command
             ->limit(50)
             ->get();
 
+        // Terminal width for dot-filling (fall back to 80)
+        $termWidth = (new Terminal())->getWidth() ?: 80;
+
         foreach ($newJobs as $job) {
             $name = $job->getJobClass() ?? $job->job_id;
             $queue = $job->queue;
@@ -219,23 +223,39 @@ class SupervisorCommand extends Command
                 $name = class_basename($name);
             }
 
-            $statusBadge = match ($job->status) {
-                Job::STATUS_COMPLETED => '<fg=black;bg=green> DONE </>',
-                Job::STATUS_FAILED    => '<fg=white;bg=red> FAIL </>',
-                Job::STATUS_PROCESSING => '<fg=black;bg=yellow> RUN  </>',
-                Job::STATUS_PENDING   => '<fg=white;bg=blue> WAIT </>',
-                default               => '<fg=white;bg=gray> '.strtoupper(str_pad($job->status, 4)).' </>',
+            [$statusBadge, $statusPlain] = match ($job->status) {
+                Job::STATUS_COMPLETED  => ['<fg=green;options=bold> DONE </>',  ' DONE '],
+                Job::STATUS_FAILED     => ['<fg=red;options=bold> FAIL </>',    ' FAIL '],
+                Job::STATUS_PROCESSING => ['<fg=yellow;options=bold> RUN  </>', ' RUN  '],
+                Job::STATUS_PENDING    => ['<fg=blue;options=bold> WAIT </>',   ' WAIT '],
+                default                => [
+                    '<fg=gray;options=bold> '.strtoupper(str_pad($job->status, 4)).' </>',
+                    ' '.strtoupper(str_pad($job->status, 4)).' ',
+                ],
             };
 
             $duration = '';
+            $durationPlain = '';
             if ($job->status === Job::STATUS_COMPLETED && $job->getDuration() !== null) {
                 $ms = round($job->getDuration() * 1000);
-                $duration = $ms >= 1000
-                    ? ' <fg=gray>'.round($ms / 1000, 1).'s</>'
-                    : " <fg=gray>{$ms}ms</>";
+                if ($ms >= 1000) {
+                    $durationPlain = ' '.round($ms / 1000, 1).'s';
+                } else {
+                    $durationPlain = " {$ms}ms";
+                }
+                $duration = " <fg=gray>{$durationPlain}</>";
             }
 
-            $this->line("  <fg=gray>{$timestamp}</>  {$statusBadge}  <fg=white>{$name}</> <fg=gray>on</> <fg=cyan>{$queue}</>{$duration}");
+            // Build the left side: "  HH:MM:SS  JobName on queue"
+            $left = "  {$timestamp}  {$name} on {$queue}";
+            // Build the right side plain text length: " DONE  142ms"
+            $rightLen = strlen($statusPlain) + strlen($durationPlain);
+
+            // Calculate dot fill (min 3 dots)
+            $dotsNeeded = $termWidth - strlen($left) - $rightLen - 2; // 2 for spaces around dots
+            $dots = str_repeat('.', max(3, $dotsNeeded));
+
+            $this->line("  <fg=gray>{$timestamp}</>  <fg=white>{$name}</> <fg=gray>on</> <fg=cyan>{$queue}</> <fg=gray>{$dots}</>{$statusBadge}{$duration}");
 
             if ($job->status === Job::STATUS_COMPLETED) {
                 $processedSinceLastSummary++;
