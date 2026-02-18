@@ -232,28 +232,24 @@ class SupervisorCommand extends Command
                 ],
             };
 
-            $duration = '';
-            $durationPlain = '';
+            // Fixed-width duration column (7 chars, right-aligned)
+            $durationCol = str_repeat(' ', 7);
             if ($job->status === Job::STATUS_COMPLETED && $job->getDuration() !== null) {
                 $ms = round($job->getDuration() * 1000);
-                if ($ms >= 1000) {
-                    $durationPlain = ' '.round($ms / 1000, 1).'s';
-                } else {
-                    $durationPlain = " {$ms}ms";
-                }
-                $duration = " <fg=gray>{$durationPlain}</>";
+                $durationText = $ms >= 1000 ? round($ms / 1000, 1).'s' : "{$ms}ms";
+                $durationCol = str_pad($durationText, 7, ' ', STR_PAD_LEFT);
             }
 
             // Build the left side: "  HH:MM:SS  JobName on queue"
             $left = "  {$timestamp}  {$name} on {$queue}";
-            // Build the right side plain text length: " DONE  142ms"
-            $rightLen = strlen($statusPlain) + strlen($durationPlain);
+            // Right side: " DONE " (6) + duration (7) = 13
+            $rightLen = strlen($statusPlain) + 7;
 
             // Calculate dot fill (min 3 dots)
-            $dotsNeeded = $termWidth - strlen($left) - $rightLen - 2; // 2 for spaces around dots
+            $dotsNeeded = $termWidth - strlen($left) - $rightLen - 2;
             $dots = str_repeat('.', max(3, $dotsNeeded));
 
-            $this->line("  <fg=gray>{$timestamp}</>  <fg=white>{$name}</> <fg=gray>on</> <fg=cyan>{$queue}</> <fg=gray>{$dots}</>{$statusBadge}{$duration}");
+            $this->line("  <fg=gray>{$timestamp}</>  <fg=white>{$name}</> <fg=gray>on</> <fg=cyan>{$queue}</> <fg=gray>{$dots}</>{$statusBadge} <fg=gray>{$durationCol}</>");
 
             if ($job->status === Job::STATUS_COMPLETED) {
                 $processedSinceLastSummary++;
