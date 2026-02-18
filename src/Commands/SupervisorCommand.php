@@ -4,6 +4,7 @@ namespace Documateai\Watchtower\Commands;
 
 use Illuminate\Console\Command;
 use Documateai\Watchtower\Contracts\CommandBusInterface;
+use Documateai\Watchtower\Models\Job;
 use Documateai\Watchtower\Models\Worker;
 use Documateai\Watchtower\Services\WorkerManager;
 
@@ -165,15 +166,55 @@ class SupervisorCommand extends Command
     }
 
     /**
-     * Output current status.
+     * Output current status — shows jobs with color-coded statuses,
+     * and only reports worker count when it changes.
      */
     protected function outputStatus(string $supervisor, int $workerCount): void
     {
         static $lastOutput = 0;
+        static $lastWorkerCount = null;
+        static $lastJobId = 0;
 
-        // Only output every 30 seconds
+        // Report worker count changes immediately
+        if ($lastWorkerCount !== null && $workerCount !== $lastWorkerCount) {
+            $delta = $workerCount - $lastWorkerCount;
+            $direction = $delta > 0 ? "+{$delta}" : (string) $delta;
+            $this->info("[{$supervisor}] Workers: {$workerCount} ({$direction})");
+        }
+        $lastWorkerCount = $workerCount;
+
+        // Show new jobs since last poll
+        $newJobs = Job::where('id', '>', $lastJobId)
+            ->orderBy('id')
+            ->limit(50)
+            ->get();
+
+        foreach ($newJobs as $job) {
+            $name = $job->getJobClass() ?? $job->job_id;
+            $queue = $job->queue;
+            $status = $job->status;
+
+            $line = "[{$supervisor}] {$name} ({$queue}): {$status}";
+
+            match ($status) {
+                Job::STATUS_COMPLETED => $this->line("<fg=green>{$line}</>"),
+                Job::STATUS_FAILED => $this->line("<fg=red>{$line}</>"),
+                Job::STATUS_PROCESSING => $this->line("<fg=yellow>{$line}</>"),
+                default => $this->line("<fg=blue>{$line}</>"),
+            };
+
+            $lastJobId = max($lastJobId, $job->id);
+        }
+
+        // Also show status transitions for jobs that were already seen but changed status
         if (time() - $lastOutput >= 30) {
-            $this->info("[{$supervisor}] Active workers: {$workerCount}");
+            $recentActive = Job::whereIn('status', [Job::STATUS_PROCESSING, Job::STATUS_PENDING])
+                ->count();
+
+            if ($recentActive > 0) {
+                $this->info("[{$supervisor}] {$recentActive} job(s) in progress/pending");
+            }
+
             $lastOutput = time();
         }
     }
