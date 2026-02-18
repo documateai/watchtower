@@ -19,25 +19,20 @@ class SupervisorCommand extends Command
 
     protected CommandBusInterface $commandBus;
 
-    /**
-     * Strict column widths.
-     */
     protected const QUEUE_WIDTH = 12;
 
     protected const WORKER_ID_WIDTH = 8;
 
-    protected const BADGE_WIDTH = 7;
-
-    protected const DETAIL_WIDTH = 7;
+    protected const DETAIL_WIDTH = 5;
 
     protected const TERM_WIDTH = 80;
 
-    /**
-     * Nerd Font / Powerline characters.
-     */
-    protected const ARROW = "\u{E0B0}";
-    protected const ARROW_LEFT = "\u{E0B2}";
+    // Powerline glyphs
+    protected const ARROW = "\u{E0B0}";       // right triangle
+    protected const ROUND_LEFT = "\u{E0B6}";  // left semicircle (rounded start)
+    protected const ROUND_RIGHT = "\u{E0B4}"; // right semicircle (rounded end)
 
+    // Nerd Font icons
     protected const ICON_EYE = "\u{F06E}";
     protected const ICON_CHECK = "\u{F00C}";
     protected const ICON_TIMES = "\u{F00D}";
@@ -51,9 +46,6 @@ class SupervisorCommand extends Command
     protected const ICON_GEAR = "\u{F013}";
     protected const ICON_INFO = "\u{F05A}";
 
-    /**
-     * Truncate or pad a string to exact width.
-     */
     protected function fit(string $str, int $width): string
     {
         if (mb_strlen($str) > $width) {
@@ -65,44 +57,46 @@ class SupervisorCommand extends Command
 
     /**
      * Build a badge: returns [styled, plain, bgColor].
+     * Plain = " icon TEXT " (8 chars with leading space).
      */
     protected function badge(string $icon, string $text, string $fg, string $bg): array
     {
-        $plain = "{$icon} {$text} ";
-        $styled = "<fg={$fg};bg={$bg}>{$icon} {$text} </>";
+        $plain = " {$icon} {$text} ";
+        $styled = "<fg={$fg};bg={$bg}> {$icon} {$text} </>";
 
         return [$styled, $plain, $bg];
     }
 
     /**
-     * Build the powerline prefix: eye → timestamp → queue → (into black action area).
-     * Returns [styled string, plain char count].
+     * Build the powerline prefix: rounded start → eye → timestamp → queue → into black.
      */
     protected function powerline(string $queue): array
     {
         $timestamp = now()->format('H:i:s');
         $queueFit = $this->fit($queue, self::QUEUE_WIDTH);
         $a = self::ARROW;
+        $rl = self::ROUND_LEFT;
         $eye = self::ICON_EYE;
 
         $segments = ''
+            ."<fg=cyan>{$rl}</>"
             ."<fg=black;bg=cyan> {$eye} </>"
             ."<fg=cyan;bg=bright-blue>{$a}</>"
             ."<fg=bright-white;bg=bright-blue> {$timestamp} </>"
             ."<fg=bright-blue;bg=blue>{$a}</>"
-            ."<fg=white;bg=blue> {$queueFit}</>"
+            ."<fg=white;bg=blue> {$queueFit} </>"
             ."<fg=blue;bg=black>{$a}</>";
 
-        // " eye " (3) + arrow (1) + " HH:MM:SS " (10) + arrow (1) + " queue______ " (13) + arrow (1) = 29
-        $plainWidth = 3 + 1 + 10 + 1 + (1 + self::QUEUE_WIDTH) + 1;
+        // rl(1) + " eye "(3) + →(1) + " HH:MM:SS "(10) + →(1) + " queue______ "(14) + →(1) = 31
+        $plainWidth = 1 + 3 + 1 + 10 + 1 + 14 + 1;
 
         return [$segments, $plainWidth];
     }
 
     /**
-     * Every line of output. Full bar with powerline transitions everywhere.
+     * Every line. Rounded bar with transparent arrow transitions between all segments.
      *
-     * [eye]→[timestamp]→[queue]→[action+dots]→[badge]→[detail]→[endcap]
+     * (eye)→(timestamp)→(queue)→(action+dots)→(badge)→(detail)→(endcap)
      */
     protected function statusLine(string $queue, string $action, array $badgeTuple, string $detail = ''): void
     {
@@ -110,13 +104,13 @@ class SupervisorCommand extends Command
         [$badgeStyled, $badgePlain, $badgeBg] = $badgeTuple;
 
         $a = self::ARROW;
-        $al = self::ARROW_LEFT;
+        $rr = self::ROUND_RIGHT;
 
         $actionPlain = preg_replace('/<[^>]+>/', '', $action);
 
-        // Fixed overhead after prefix (all the non-action chars):
-        // " " (1) action dots " " (1) arrow-into-badge (1) badge (7) arrow-out-badge (1) " " detail " " (9) arrow-into-endcap (1) " " endcap (1) left-arrow (1) = 23
-        $overhead = 1 + 1 + 1 + mb_strlen($badgePlain) + 1 + 1 + self::DETAIL_WIDTH + 1 + 1 + 1 + 1;
+        // Fixed chars after prefix:
+        // " action " (2 padding) + →(1) + badge(8) + →(1) + " detail "(7) + →(1) + endcap(1) + rr(1) = 22
+        $overhead = 2 + 1 + mb_strlen($badgePlain) + 1 + (2 + self::DETAIL_WIDTH) + 1 + 1 + 1;
         $actionDotsWidth = self::TERM_WIDTH - $prefixWidth - $overhead;
 
         $maxActionLen = $actionDotsWidth - 1;
@@ -131,31 +125,19 @@ class SupervisorCommand extends Command
         $detailCol = str_pad($detail, self::DETAIL_WIDTH, ' ', STR_PAD_LEFT);
 
         $this->line(
-            // Prefix: eye → timestamp → queue → black
             "{$prefix}"
-            // Action area: black bg
             ."<fg=white;bg=black> {$action} </>"
-            ."<fg=gray;bg=black>{$dots} </>"
-            // Arrow into badge
+            ."<fg=gray;bg=black>{$dots}</>"
             ."<fg=black;bg={$badgeBg}>{$a}</>"
-            // Badge
             ."{$badgeStyled}"
-            // Arrow out of badge into detail (bright-blue, matching timestamp)
             ."<fg={$badgeBg};bg=bright-blue>{$a}</>"
-            // Detail area: bright-blue bg (matches timestamp)
             ."<fg=bright-white;bg=bright-blue> {$detailCol} </>"
-            // Arrow into end cap (cyan, matching eye)
             ."<fg=bright-blue;bg=cyan>{$a}</>"
-            // End cap: cyan bg, blank space (mirrors eye segment)
-            ."<fg=cyan;bg=cyan> </>"
-            // Close the bar
-            ."<fg=cyan>{$al}</>"
+            ."<fg=black;bg=cyan> </>"
+            ."<fg=cyan>{$rr}</>"
         );
     }
 
-    /**
-     * Commonly used badges.
-     */
     protected function badgeDone(): array
     {
         return $this->badge(self::ICON_CHECK, 'DONE', 'white', 'green');
@@ -216,21 +198,20 @@ class SupervisorCommand extends Command
         return $this->badge(self::ICON_INFO, 'INFO', 'white', 'cyan');
     }
 
-    /**
-     * Print a divider line.
-     */
     protected function divider(): void
     {
         $a = self::ARROW;
-        $al = self::ARROW_LEFT;
+        $rl = self::ROUND_LEFT;
+        $rr = self::ROUND_RIGHT;
         $eye = self::ICON_EYE;
         $this->line(
-            "<fg=black;bg=cyan> {$eye} </>"
+            "<fg=cyan>{$rl}</>"
+            ."<fg=black;bg=cyan> {$eye} </>"
             ."<fg=cyan;bg=gray>{$a}</>"
             .'<fg=gray;bg=gray>'.str_repeat(' ', 73).'</>'
             ."<fg=gray;bg=cyan>{$a}</>"
-            ."<fg=cyan;bg=cyan> </>"
-            ."<fg=cyan>{$al}</>"
+            ."<fg=black;bg=cyan> </>"
+            ."<fg=cyan>{$rr}</>"
         );
     }
 
@@ -257,7 +238,7 @@ class SupervisorCommand extends Command
 
                 $this->supervise($workerManager, $supervisorName, $config);
             } catch (\Throwable $e) {
-                $msg = mb_substr($e->getMessage(), 0, 28);
+                $msg = mb_substr($e->getMessage(), 0, 24);
                 $this->statusLine('system', $msg, $this->badgeErr());
                 report($e);
             }
@@ -308,7 +289,7 @@ class SupervisorCommand extends Command
                 ]);
 
                 $shortId = substr($workerId, 0, self::WORKER_ID_WIDTH);
-                $this->statusLine('supervisor', "Wkr {$shortId} spawned", $this->badgeStart(), '+1 Wkr');
+                $this->statusLine('supervisor', "Wkr {$shortId} spawned", $this->badgeStart(), '+1Wk');
             }
         }
 
@@ -330,7 +311,7 @@ class SupervisorCommand extends Command
                     $newShort = substr($newWorkerId, 0, self::WORKER_ID_WIDTH);
                     $this->statusLine('supervisor', "{$newShort} repl {$shortId}", $this->badgeSwap());
                 } else {
-                    $this->statusLine('supervisor', "Wkr {$shortId} lost", $this->badgeDead(), '-1 Wkr');
+                    $this->statusLine('supervisor', "Wkr {$shortId} lost", $this->badgeDead(), '-1Wk');
                 }
             }
         }
@@ -427,8 +408,8 @@ class SupervisorCommand extends Command
             $parts[] = "<fg=yellow>{$play} {$processing}</>";
             $parts[] = "<fg=blue>{$clock} {$pending}</>";
 
-            $summary = 'Jobs: '.implode(' / ', $parts);
-            $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount} Wkr");
+            $summary = 'Jobs: '.implode('/', $parts);
+            $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount}Wk");
 
             $processedSinceLastSummary = 0;
             $failedSinceLastSummary = 0;
