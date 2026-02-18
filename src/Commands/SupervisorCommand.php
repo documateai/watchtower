@@ -224,12 +224,12 @@ class SupervisorCommand extends Command
             }
 
             [$statusBadge, $statusPlain] = match ($job->status) {
-                Job::STATUS_COMPLETED  => ['<fg=green;options=bold> DONE </>',  ' DONE '],
-                Job::STATUS_FAILED     => ['<fg=red;options=bold> FAIL </>',    ' FAIL '],
-                Job::STATUS_PROCESSING => ['<fg=yellow;options=bold> RUN  </>', ' RUN  '],
-                Job::STATUS_PENDING    => ['<fg=blue;options=bold> WAIT </>',   ' WAIT '],
+                Job::STATUS_COMPLETED  => ['<fg=white;bg=green> DONE </>', ' DONE '],
+                Job::STATUS_FAILED     => ['<fg=white;bg=red> FAIL </>',  ' FAIL '],
+                Job::STATUS_PROCESSING => ['<fg=white;bg=yellow> RUN  </>', ' RUN  '],
+                Job::STATUS_PENDING    => ['<fg=white;bg=blue> WAIT </>', ' WAIT '],
                 default                => [
-                    '<fg=gray;options=bold> '.strtoupper(str_pad($job->status, 4)).' </>',
+                    '<fg=white;bg=gray> '.strtoupper(str_pad($job->status, 4)).' </>',
                     ' '.strtoupper(str_pad($job->status, 4)).' ',
                 ],
             };
