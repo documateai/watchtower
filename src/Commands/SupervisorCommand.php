@@ -35,7 +35,8 @@ class SupervisorCommand extends Command
     /**
      * Nerd Font / Powerline characters.
      */
-    protected const ARROW = "\u{E0B0}";  // Powerline right arrow
+    protected const ARROW = "\u{E0B0}";      // Powerline right arrow
+    protected const ARROW_LEFT = "\u{E0B2}"; // Powerline left arrow (end cap)
 
     protected const ICON_EYE = "\u{F06E}";     // 󰁮 watchtower/monitoring
     protected const ICON_CHECK = "\u{F00C}";   //  done/success
@@ -85,15 +86,15 @@ class SupervisorCommand extends Command
         $eye = self::ICON_EYE;
 
         $segments = ''
-            ."<fg=black;bg=cyan> {$eye} WT </>"
+            ."<fg=black;bg=cyan> {$eye} </>"
             ."<fg=cyan;bg=bright-blue>{$a}</>"
-            ."<fg=white;bg=bright-blue> {$timestamp} </>"
+            ."<fg=bright-white;bg=bright-blue> {$timestamp} </>"
             ."<fg=bright-blue;bg=blue>{$a}</>"
             ."<fg=white;bg=blue> {$queueFit}</>"
-            ."<fg=blue>{$a}</>";
+            ."<fg=blue;bg=bright-black>{$a}</>";
 
-        // " 󰁮 WT " (6) + arrow (1) + " HH:MM:SS " (10) + arrow (1) + " queue______" (13) + arrow (1) = 32
-        $plainWidth = 6 + 1 + 10 + 1 + (1 + self::QUEUE_WIDTH) + 1;
+        // " 󰁮 " (3) + arrow (1) + " HH:MM:SS " (10) + arrow (1) + " queue______" (13) + arrow (1) = 29
+        $plainWidth = 3 + 1 + 10 + 1 + (1 + self::QUEUE_WIDTH) + 1;
 
         return [$segments, $plainWidth];
     }
@@ -108,8 +109,8 @@ class SupervisorCommand extends Command
 
         $actionPlain = preg_replace('/<[^>]+>/', '', $action);
 
-        // Available for: " " + action + " " + dots + " " + badge(7) + " " + detail(7)
-        $overhead = 1 + 1 + 1 + mb_strlen($badgePlain) + 1 + self::DETAIL_WIDTH;
+        // " " + action + " " + dots + " " + badge(7) + " " + detail(7) + " " + arrow(1)
+        $overhead = 1 + 1 + 1 + mb_strlen($badgePlain) + 1 + self::DETAIL_WIDTH + 1 + 1;
         $actionDotsWidth = self::TERM_WIDTH - $prefixWidth - $overhead;
 
         $maxActionLen = $actionDotsWidth - 1;
@@ -123,7 +124,26 @@ class SupervisorCommand extends Command
 
         $detailCol = str_pad($detail, self::DETAIL_WIDTH, ' ', STR_PAD_LEFT);
 
-        $this->line("{$prefix} {$action} <fg=gray>{$dots}</> {$badge} <fg=gray>{$detailCol}</>");
+        // Detail color
+        $detailFg = 'gray';
+        if (trim($detail) !== '') {
+            $detailFg = str_contains($detail, 'Wkr') ? 'bright-blue' : 'bright-cyan';
+        }
+
+        // All sections get backgrounds for a continuous bar look
+        // Action + dots: bright-black (dark gray) bg
+        // Badge: its own colored bg (pops out)
+        // Detail: black bg (slightly darker edge)
+        $al = self::ARROW_LEFT;
+
+        $this->line(
+            "{$prefix}"
+            ."<fg=bright-white;bg=bright-black> {$action} </>"
+            ."<fg=gray;bg=bright-black>{$dots} </>"
+            ."{$badge}"
+            ."<fg={$detailFg};bg=black> {$detailCol} </>"
+            ."<fg=black>{$al}</>"
+        );
     }
 
     /**
@@ -195,12 +215,13 @@ class SupervisorCommand extends Command
     protected function divider(): void
     {
         $a = self::ARROW;
+        $al = self::ARROW_LEFT;
         $eye = self::ICON_EYE;
         $this->line(
-            "<fg=black;bg=cyan> {$eye} WT </>"
-            ."<fg=cyan;bg=gray>{$a}</>"
-            .'<fg=gray;bg=gray>'.str_repeat('─', 72).'</>'
-            ."<fg=gray>{$a}</>"
+            "<fg=black;bg=cyan> {$eye} </>"
+            ."<fg=cyan;bg=bright-black>{$a}</>"
+            .'<fg=gray;bg=bright-black>'.str_repeat('─', 75).'</>'
+            ."<fg=bright-black>{$al}</>"
         );
     }
 
@@ -386,24 +407,19 @@ class SupervisorCommand extends Command
             $pending = Job::where('status', Job::STATUS_PENDING)->count();
             $processing = Job::where('status', Job::STATUS_PROCESSING)->count();
 
-            $pieces = [];
-            if ($processedSinceLastSummary > 0) {
-                $pieces[] = "{$processedSinceLastSummary}ok";
-            }
-            if ($failedSinceLastSummary > 0) {
-                $pieces[] = "{$failedSinceLastSummary}err";
-            }
-            if ($processing > 0) {
-                $pieces[] = "{$processing}run";
-            }
-            if ($pending > 0) {
-                $pieces[] = "{$pending}wait";
-            }
+            $check = self::ICON_CHECK;
+            $times = self::ICON_TIMES;
+            $play = self::ICON_PLAY;
+            $clock = self::ICON_CLOCK;
 
-            if (! empty($pieces)) {
-                $summary = implode(' ', $pieces);
-                $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount} Wkr");
-            }
+            $parts = [];
+            $parts[] = "<fg=green>{$check} {$processedSinceLastSummary}</>";
+            $parts[] = "<fg=red>{$times} {$failedSinceLastSummary}</>";
+            $parts[] = "<fg=yellow>{$play} {$processing}</>";
+            $parts[] = "<fg=blue>{$clock} {$pending}</>";
+
+            $summary = 'Jobs: '.implode(' / ', $parts);
+            $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount} Wkr");
 
             $processedSinceLastSummary = 0;
             $failedSinceLastSummary = 0;
