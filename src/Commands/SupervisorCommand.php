@@ -10,27 +10,200 @@ use Documateai\Watchtower\Services\WorkerManager;
 
 class SupervisorCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     */
     protected $signature = 'watchtower:supervisor
                             {--supervisor=default : The supervisor configuration to use}';
 
-    /**
-     * The console command description.
-     */
     protected $description = 'Start the Watchtower supervisor to manage queue workers';
 
-    /**
-     * Whether the supervisor should continue running.
-     */
     protected bool $running = true;
 
     protected CommandBusInterface $commandBus;
 
     /**
-     * Execute the console command.
+     * Strict column widths.
      */
+    protected const QUEUE_WIDTH = 12;
+
+    protected const WORKER_ID_WIDTH = 8;
+
+    protected const BADGE_WIDTH = 7; // icon + space + 4-char text + space
+
+    protected const DETAIL_WIDTH = 7;
+
+    protected const TERM_WIDTH = 80;
+
+    /**
+     * Nerd Font / Powerline characters.
+     */
+    protected const ARROW = "\u{E0B0}";  // Powerline right arrow
+
+    protected const ICON_EYE = "\u{F06E}";     // 󰁮 watchtower/monitoring
+    protected const ICON_CHECK = "\u{F00C}";   //  done/success
+    protected const ICON_TIMES = "\u{F00D}";   //  fail/error
+    protected const ICON_PLAY = "\u{F04B}";    //  running
+    protected const ICON_CLOCK = "\u{F017}";   //  waiting/pending
+    protected const ICON_BOLT = "\u{F0E7}";    //  start/spawn
+    protected const ICON_STOP = "\u{F04D}";    //  stop/shutdown
+    protected const ICON_WARN = "\u{F071}";    //  warning
+    protected const ICON_SWAP = "\u{F074}";    //  swap/replace
+    protected const ICON_SKULL = "\u{F54C}";   //  dead process
+    protected const ICON_GEAR = "\u{F013}";    //  init/config
+    protected const ICON_INFO = "\u{F05A}";    //  info/summary
+
+    /**
+     * Truncate or pad a string to exact width.
+     */
+    protected function fit(string $str, int $width): string
+    {
+        if (mb_strlen($str) > $width) {
+            return mb_substr($str, 0, $width - 1).'.';
+        }
+
+        return str_pad($str, $width);
+    }
+
+    /**
+     * Build a styled badge: "icon TEXT " (7 chars).
+     */
+    protected function badge(string $icon, string $text, string $fg, string $bg): array
+    {
+        $plain = "{$icon} {$text} ";
+        $styled = "<fg={$fg};bg={$bg}>{$icon} {$text} </>";
+
+        return [$styled, $plain];
+    }
+
+    /**
+     * Build the powerline prefix segments.
+     * Returns [styled string, plain char count].
+     */
+    protected function powerline(string $queue): array
+    {
+        $timestamp = now()->format('H:i:s');
+        $queueFit = $this->fit($queue, self::QUEUE_WIDTH);
+        $a = self::ARROW;
+        $eye = self::ICON_EYE;
+
+        $segments = ''
+            ."<fg=black;bg=cyan> {$eye} WT </>"
+            ."<fg=cyan;bg=bright-blue>{$a}</>"
+            ."<fg=white;bg=bright-blue> {$timestamp} </>"
+            ."<fg=bright-blue;bg=blue>{$a}</>"
+            ."<fg=white;bg=blue> {$queueFit}</>"
+            ."<fg=blue>{$a}</>";
+
+        // " 󰁮 WT " (6) + arrow (1) + " HH:MM:SS " (10) + arrow (1) + " queue______" (13) + arrow (1) = 32
+        $plainWidth = 6 + 1 + 10 + 1 + (1 + self::QUEUE_WIDTH) + 1;
+
+        return [$segments, $plainWidth];
+    }
+
+    /**
+     * Every line of output. Powerline prefix + action + dots + badge + detail.
+     */
+    protected function statusLine(string $queue, string $action, array $badgePair, string $detail = ''): void
+    {
+        [$prefix, $prefixWidth] = $this->powerline($queue);
+        [$badge, $badgePlain] = $badgePair;
+
+        $actionPlain = preg_replace('/<[^>]+>/', '', $action);
+
+        // Available for: " " + action + " " + dots + " " + badge(7) + " " + detail(7)
+        $overhead = 1 + 1 + 1 + mb_strlen($badgePlain) + 1 + self::DETAIL_WIDTH;
+        $actionDotsWidth = self::TERM_WIDTH - $prefixWidth - $overhead;
+
+        $maxActionLen = $actionDotsWidth - 1;
+        if (mb_strlen($actionPlain) > $maxActionLen) {
+            $actionPlain = mb_substr($actionPlain, 0, max(1, $maxActionLen - 1)).'.';
+            $action = $actionPlain;
+        }
+
+        $dotsNeeded = $actionDotsWidth - mb_strlen($actionPlain);
+        $dots = str_repeat('.', max(1, $dotsNeeded));
+
+        $detailCol = str_pad($detail, self::DETAIL_WIDTH, ' ', STR_PAD_LEFT);
+
+        $this->line("{$prefix} {$action} <fg=gray>{$dots}</> {$badge} <fg=gray>{$detailCol}</>");
+    }
+
+    /**
+     * Commonly used badges.
+     */
+    protected function badgeDone(): array
+    {
+        return $this->badge(self::ICON_CHECK, 'DONE', 'white', 'green');
+    }
+
+    protected function badgeFail(): array
+    {
+        return $this->badge(self::ICON_TIMES, 'FAIL', 'white', 'red');
+    }
+
+    protected function badgeRun(): array
+    {
+        return $this->badge(self::ICON_PLAY, 'RUN ', 'white', 'yellow');
+    }
+
+    protected function badgeWait(): array
+    {
+        return $this->badge(self::ICON_CLOCK, 'WAIT', 'white', 'blue');
+    }
+
+    protected function badgeStart(): array
+    {
+        return $this->badge(self::ICON_BOLT, 'NEW ', 'white', 'green');
+    }
+
+    protected function badgeStop(): array
+    {
+        return $this->badge(self::ICON_STOP, 'STOP', 'white', 'yellow');
+    }
+
+    protected function badgeWarn(): array
+    {
+        return $this->badge(self::ICON_WARN, 'WARN', 'white', 'yellow');
+    }
+
+    protected function badgeErr(): array
+    {
+        return $this->badge(self::ICON_WARN, 'ERR ', 'white', 'red');
+    }
+
+    protected function badgeSwap(): array
+    {
+        return $this->badge(self::ICON_SWAP, 'SWAP', 'white', 'yellow');
+    }
+
+    protected function badgeDead(): array
+    {
+        return $this->badge(self::ICON_SKULL, 'DEAD', 'white', 'red');
+    }
+
+    protected function badgeInit(): array
+    {
+        return $this->badge(self::ICON_GEAR, 'INIT', 'white', 'cyan');
+    }
+
+    protected function badgeInfo(): array
+    {
+        return $this->badge(self::ICON_INFO, 'INFO', 'white', 'cyan');
+    }
+
+    /**
+     * Print a divider line.
+     */
+    protected function divider(): void
+    {
+        $a = self::ARROW;
+        $eye = self::ICON_EYE;
+        $this->line(
+            "<fg=black;bg=cyan> {$eye} WT </>"
+            ."<fg=cyan;bg=gray>{$a}</>"
+            .'<fg=gray;bg=gray>'.str_repeat('─', 72).'</>'
+            ."<fg=gray>{$a}</>"
+        );
+    }
+
     public function handle(WorkerManager $workerManager, CommandBusInterface $commandBus): int
     {
         $this->commandBus = $commandBus;
@@ -38,46 +211,40 @@ class SupervisorCommand extends Command
         $config = config("watchtower.supervisors.{$supervisorName}");
 
         if (! $config) {
-            $this->error("Supervisor configuration '{$supervisorName}' not found.");
+            $this->statusLine('system', "Config '{$supervisorName}' missing", $this->badgeErr());
 
             return Command::FAILURE;
         }
 
         $this->printBanner($supervisorName, $config);
 
-        // Main supervisor loop
         while ($this->running) {
             try {
-                // Check for terminate signal
                 if ($this->shouldTerminate()) {
-                    $this->info('Received terminate signal');
+                    $this->statusLine('system', 'Terminate signal', $this->badgeStop());
                     break;
                 }
 
                 $this->supervise($workerManager, $supervisorName, $config);
             } catch (\Throwable $e) {
-                $this->error("Supervisor error: {$e->getMessage()}");
+                $msg = mb_substr($e->getMessage(), 0, 28);
+                $this->statusLine('system', $msg, $this->badgeErr());
                 report($e);
             }
 
-            // Poll interval
             sleep(config('watchtower.worker_poll_interval', 3));
         }
 
-        $this->info('Supervisor shutting down...');
+        $this->statusLine('system', 'Shutdown complete', $this->badgeStop());
         $workerManager->terminateAllWorkers();
 
         return Command::SUCCESS;
     }
 
-    /**
-     * Main supervision logic.
-     */
     protected function supervise(WorkerManager $workerManager, string $supervisorName, array $config): void
     {
         $queues = (array) $config['queue'];
 
-        // Auto-discover queues if set to '*'
         if ($queues === ['*'] || in_array('*', $queues, true)) {
             $queues = $workerManager->discoverQueues();
             if (empty($queues)) {
@@ -85,25 +252,20 @@ class SupervisorCommand extends Command
             }
         }
 
-        // Clean up stale workers
         $staleCount = $workerManager->cleanupStaleWorkers();
         if ($staleCount > 0) {
-            $this->warn("Cleaned up {$staleCount} stale worker(s)");
+            $this->statusLine('supervisor', "Pruned {$staleCount} stale", $this->badgeWarn());
         }
 
-        // Get current running workers for this supervisor
         $runningWorkers = Worker::forSupervisor($supervisorName)
             ->whereIn('status', [Worker::STATUS_RUNNING, Worker::STATUS_PAUSED])
             ->get();
 
         $currentCount = $runningWorkers->count();
         $minProcesses = $config['min_processes'];
-        $maxProcesses = $config['max_processes'];
 
-        // Scale up if below minimum
         if ($currentCount < $minProcesses) {
             $toStart = $minProcesses - $currentCount;
-            $this->info("Starting {$toStart} worker(s) to meet minimum");
 
             for ($i = 0; $i < $toStart; $i++) {
                 $queue = $this->getNextQueue($queues, $i, $config['balance'] ?? 'simple');
@@ -114,19 +276,18 @@ class SupervisorCommand extends Command
                     'memory' => $config['memory'] ?? 128,
                     'sleep' => $config['sleep'] ?? 3,
                 ]);
-                $this->info("Started worker [{$workerId}] on queue [{$queue}]");
+
+                $shortId = substr($workerId, 0, self::WORKER_ID_WIDTH);
+                $this->statusLine('supervisor', "Wkr {$shortId} spawned", $this->badgeStart(), '+1 Wkr');
             }
         }
 
-        // Verify workers are still alive
         foreach ($runningWorkers as $worker) {
             if (! $workerManager->isWorkerRunning($worker->worker_id)) {
-                $this->warn("Worker [{$worker->worker_id}] is no longer running, marking as stopped");
                 $worker->update(['status' => Worker::STATUS_STOPPED]);
+                $shortId = substr($worker->worker_id, 0, self::WORKER_ID_WIDTH);
 
-                // Restart if we're below minimum
                 if ($runningWorkers->count() <= $minProcesses) {
-                    // Use the same queue assignment as the failed worker
                     $queue = $worker->queue;
                     $newWorkerId = $workerManager->startWorker($queue, [
                         'supervisor' => $supervisorName,
@@ -135,162 +296,113 @@ class SupervisorCommand extends Command
                         'memory' => $config['memory'] ?? 128,
                         'sleep' => $config['sleep'] ?? 3,
                     ]);
-                    $this->info("Restarted worker [{$newWorkerId}] on queue [{$queue}]");
+
+                    $newShort = substr($newWorkerId, 0, self::WORKER_ID_WIDTH);
+                    $this->statusLine('supervisor', "{$newShort} repl {$shortId}", $this->badgeSwap());
+                } else {
+                    $this->statusLine('supervisor', "Wkr {$shortId} lost", $this->badgeDead(), '-1 Wkr');
                 }
             }
         }
 
-        // Output status periodically
         $this->outputStatus($supervisorName, $runningWorkers->count());
     }
 
-    /**
-     * Get the next queue to assign a worker to based on balance strategy.
-     *
-     * @param  array  $queues  Available queues
-     * @param  int  $index  Worker index for round-robin
-     * @param  string  $balance  Balance strategy ('simple' or 'auto')
-     * @return string Queue name(s) - single queue for 'auto', comma-separated for 'simple'
-     */
     protected function getNextQueue(array $queues, int $index, string $balance = 'simple'): string
     {
         if ($balance === 'simple') {
-            // All workers process all queues (comma-separated for Laravel queue worker)
             return implode(',', $queues);
         }
 
-        // 'auto' mode: round-robin assignment (each worker gets one queue)
         return $queues[$index % count($queues)];
     }
 
-    /**
-     * Print the startup banner.
-     */
     protected function printBanner(string $supervisorName, array $config): void
     {
         $queues = implode(', ', (array) $config['queue']);
         $balance = $config['balance'] ?? 'simple';
+        $workers = "{$config['min_processes']}-{$config['max_processes']} ({$balance})";
 
         $this->newLine();
-        $this->line('  <fg=cyan;options=bold>WATCHTOWER</> <fg=gray>v'.config('watchtower.version', '3').'</>');
-        $this->line('  <fg=gray>'.str_repeat('-', 44).'</>');
-        $this->line("  <fg=white>Supervisor</>  <fg=cyan>{$supervisorName}</>");
-        $this->line("  <fg=white>Queues</>      <fg=cyan>{$queues}</>");
-        $this->line("  <fg=white>Workers</>     <fg=cyan>{$config['min_processes']}-{$config['max_processes']}</> <fg=gray>({$balance})</>");
-        $this->line('  <fg=gray>'.str_repeat('-', 44).'</>');
+        $this->divider();
+        $this->statusLine('supervisor', $supervisorName, $this->badgeInit());
+        $this->statusLine('queues', $queues, $this->badgeInit());
+        $this->statusLine('workers', $workers, $this->badgeInit());
+        $this->divider();
         $this->newLine();
     }
 
-    /**
-     * Output current status — streams job activity with color-coded statuses.
-     * Worker count is only reported when it changes.
-     */
     protected function outputStatus(string $supervisor, int $workerCount): void
     {
-        static $lastWorkerCount = null;
         static $lastJobId = 0;
         static $lastSummaryAt = 0;
         static $processedSinceLastSummary = 0;
         static $failedSinceLastSummary = 0;
 
-        $now = now();
-        $timestamp = $now->format('H:i:s');
-
-        // Report worker count changes
-        if ($lastWorkerCount !== null && $workerCount !== $lastWorkerCount) {
-            $delta = $workerCount - $lastWorkerCount;
-            $arrow = $delta > 0 ? '<fg=green>▲ +'.$delta.'</>' : '<fg=red>▼ '.$delta.'</>';
-            $this->line("  <fg=gray>{$timestamp}</>  {$arrow}  <fg=white;options=bold>Workers: {$workerCount}</>");
-        }
-        $lastWorkerCount = $workerCount;
-
-        // Stream new jobs since last poll
         $newJobs = Job::where('id', '>', $lastJobId)
             ->orderBy('id')
             ->limit(50)
             ->get();
 
-        $termWidth = 80;
-
         foreach ($newJobs as $job) {
             $name = $job->getJobClass() ?? $job->job_id;
-            $queue = $job->queue;
+            $queue = $job->queue ?? 'default';
 
-            // Shorten long class names to just the class basename
             if (str_contains($name, '\\')) {
                 $name = class_basename($name);
             }
 
-            [$statusBadge, $statusPlain] = match ($job->status) {
-                Job::STATUS_COMPLETED  => ['<fg=white;bg=green> DONE </>', ' DONE '],
-                Job::STATUS_FAILED     => ['<fg=white;bg=red> FAIL </>',  ' FAIL '],
-                Job::STATUS_PROCESSING => ['<fg=white;bg=yellow> RUN  </>', ' RUN  '],
-                Job::STATUS_PENDING    => ['<fg=white;bg=blue> WAIT </>', ' WAIT '],
-                default                => [
-                    '<fg=white;bg=gray> '.strtoupper(str_pad($job->status, 4)).' </>',
-                    ' '.strtoupper(str_pad($job->status, 4)).' ',
-                ],
+            $badgePair = match ($job->status) {
+                Job::STATUS_COMPLETED  => $this->badgeDone(),
+                Job::STATUS_FAILED     => $this->badgeFail(),
+                Job::STATUS_PROCESSING => $this->badgeRun(),
+                Job::STATUS_PENDING    => $this->badgeWait(),
+                default                => $this->badge(self::ICON_INFO, str_pad(strtoupper($job->status), 4), 'white', 'gray'),
             };
 
-            // Fixed-width duration column (7 chars, right-aligned)
-            $durationCol = str_repeat(' ', 7);
+            $detail = '';
             if ($job->status === Job::STATUS_COMPLETED && $job->getDuration() !== null) {
                 $ms = round($job->getDuration() * 1000);
-                $durationText = $ms >= 1000 ? round($ms / 1000, 1).'s' : "{$ms}ms";
-                $durationCol = str_pad($durationText, 7, ' ', STR_PAD_LEFT);
+                $detail = $ms >= 1000 ? round($ms / 1000, 1).'s' : "{$ms}ms";
             }
 
-            // Build the left side: "  HH:MM:SS  JobName on queue"
-            $left = "  {$timestamp}  {$name} on {$queue}";
-            // Right side: " DONE " (6) + duration (7) = 13
-            $rightLen = strlen($statusPlain) + 7;
-
-            // Calculate dot fill (min 3 dots)
-            $dotsNeeded = $termWidth - strlen($left) - $rightLen - 2;
-            $dots = str_repeat('.', max(3, $dotsNeeded));
-
-            $this->line("  <fg=gray>{$timestamp}</>  <fg=white>{$name}</> <fg=gray>on</> <fg=cyan>{$queue}</> <fg=gray>{$dots}</>{$statusBadge} <fg=gray>{$durationCol}</>");
+            $this->statusLine($queue, $name, $badgePair, $detail);
 
             if ($job->status === Job::STATUS_COMPLETED) {
                 $processedSinceLastSummary++;
             } elseif ($job->status === Job::STATUS_FAILED) {
                 $failedSinceLastSummary++;
 
-                // Show exception preview for failed jobs
                 if ($job->exception) {
                     $exceptionLine = strtok($job->exception, "\n");
-                    if (strlen($exceptionLine) > 80) {
-                        $exceptionLine = substr($exceptionLine, 0, 80).'...';
-                    }
-                    $this->line("           <fg=red>└ {$exceptionLine}</>");
+                    $this->statusLine($queue, $exceptionLine, $this->badgeFail());
                 }
             }
 
             $lastJobId = max($lastJobId, $job->id);
         }
 
-        // Periodic summary every 30 seconds
         if (time() - $lastSummaryAt >= 30) {
             $pending = Job::where('status', Job::STATUS_PENDING)->count();
             $processing = Job::where('status', Job::STATUS_PROCESSING)->count();
 
-            $parts = [];
+            $pieces = [];
             if ($processedSinceLastSummary > 0) {
-                $parts[] = "<fg=green>{$processedSinceLastSummary} done</>";
+                $pieces[] = "{$processedSinceLastSummary}ok";
             }
             if ($failedSinceLastSummary > 0) {
-                $parts[] = "<fg=red>{$failedSinceLastSummary} failed</>";
+                $pieces[] = "{$failedSinceLastSummary}err";
             }
             if ($processing > 0) {
-                $parts[] = "<fg=yellow>{$processing} running</>";
+                $pieces[] = "{$processing}run";
             }
             if ($pending > 0) {
-                $parts[] = "<fg=blue>{$pending} pending</>";
+                $pieces[] = "{$pending}wait";
             }
 
-            if (! empty($parts)) {
-                $summary = implode(' <fg=gray>|</> ', $parts);
-                $this->line("  <fg=gray>{$timestamp}</>  <fg=gray>---</> {$summary} <fg=gray>| {$workerCount} worker(s)</>");
+            if (! empty($pieces)) {
+                $summary = implode(' ', $pieces);
+                $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount} Wkr");
             }
 
             $processedSinceLastSummary = 0;
@@ -299,15 +411,11 @@ class SupervisorCommand extends Command
         }
     }
 
-    /**
-     * Check if the supervisor should terminate.
-     */
     protected function shouldTerminate(): bool
     {
         $terminateAt = $this->commandBus->get('watchtower:terminate');
 
         if ($terminateAt) {
-            // Clear the terminate flag so next start works normally
             $this->commandBus->forget('watchtower:terminate');
 
             return true;
