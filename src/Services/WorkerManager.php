@@ -332,11 +332,12 @@ class WorkerManager
             // Job query failed, continue
         }
 
-        // Method 5: Get queues from active workers
+        // Method 5: Get queues from active workers (workers may store comma-separated queues)
         try {
             $workerQueues = Worker::distinct()
                 ->pluck('queue')
-                ->filter();
+                ->filter()
+                ->flatMap(fn ($q) => explode(',', $q));
             $queues = $queues->merge($workerQueues);
         } catch (\Throwable $e) {
             // Worker query failed, continue
@@ -357,6 +358,11 @@ class WorkerManager
         // Always include 'default' queue
         $queues->push('default');
 
-        return $queues->unique()->sort()->values()->toArray();
+        return $queues->map(fn ($q) => trim((string) $q))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
     }
 }
