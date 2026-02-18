@@ -109,8 +109,8 @@ class SupervisorCommand extends Command
         $actionPlain = preg_replace('/<[^>]+>/', '', $action);
 
         // Fixed chars after prefix:
-        // " action " (2 padding) + →(1) + badge(8) + →(1) + " detail "(7) + →(1) + endcap(1) + rr(1) = 22
-        $overhead = 2 + 1 + mb_strlen($badgePlain) + 1 + (2 + self::DETAIL_WIDTH) + 1 + 1 + 1;
+        // " action " (2) + →(1) + badge(8) + →(1) + " detail " (7) + rr(1) = 20
+        $overhead = 2 + 1 + mb_strlen($badgePlain) + 1 + (2 + self::DETAIL_WIDTH) + 1;
         $actionDotsWidth = self::TERM_WIDTH - $prefixWidth - $overhead;
 
         $maxActionLen = $actionDotsWidth - 1;
@@ -132,9 +132,7 @@ class SupervisorCommand extends Command
             ."{$badgeStyled}"
             ."<fg={$badgeBg};bg=bright-blue>{$a}</>"
             ."<fg=bright-white;bg=bright-blue> {$detailCol} </>"
-            ."<fg=bright-blue;bg=cyan>{$a}</>"
-            ."<fg=black;bg=cyan> </>"
-            ."<fg=cyan>{$rr}</>"
+            ."<fg=bright-blue>{$rr}</>"
         );
     }
 
@@ -208,10 +206,8 @@ class SupervisorCommand extends Command
             "<fg=cyan>{$rl}</>"
             ."<fg=black;bg=cyan> {$eye} </>"
             ."<fg=cyan;bg=gray>{$a}</>"
-            .'<fg=gray;bg=gray>'.str_repeat(' ', 73).'</>'
-            ."<fg=gray;bg=cyan>{$a}</>"
-            ."<fg=black;bg=cyan> </>"
-            ."<fg=cyan>{$rr}</>"
+            .'<fg=gray;bg=gray>'.str_repeat(' ', 75).'</>'
+            ."<fg=gray>{$rr}</>"
         );
     }
 
@@ -346,9 +342,6 @@ class SupervisorCommand extends Command
     protected function outputStatus(string $supervisor, int $workerCount): void
     {
         static $lastJobId = 0;
-        static $lastSummaryAt = 0;
-        static $processedSinceLastSummary = 0;
-        static $failedSinceLastSummary = 0;
 
         $newJobs = Job::where('id', '>', $lastJobId)
             ->orderBy('id')
@@ -379,41 +372,12 @@ class SupervisorCommand extends Command
 
             $this->statusLine($queue, $name, $badgeTuple, $detail);
 
-            if ($job->status === Job::STATUS_COMPLETED) {
-                $processedSinceLastSummary++;
-            } elseif ($job->status === Job::STATUS_FAILED) {
-                $failedSinceLastSummary++;
-
-                if ($job->exception) {
-                    $exceptionLine = strtok($job->exception, "\n");
-                    $this->statusLine($queue, $exceptionLine, $this->badgeFail());
-                }
+            if ($job->status === Job::STATUS_FAILED && $job->exception) {
+                $exceptionLine = strtok($job->exception, "\n");
+                $this->statusLine($queue, $exceptionLine, $this->badgeFail());
             }
 
             $lastJobId = max($lastJobId, $job->id);
-        }
-
-        if (time() - $lastSummaryAt >= 30) {
-            $pending = Job::where('status', Job::STATUS_PENDING)->count();
-            $processing = Job::where('status', Job::STATUS_PROCESSING)->count();
-
-            $check = self::ICON_CHECK;
-            $times = self::ICON_TIMES;
-            $play = self::ICON_PLAY;
-            $clock = self::ICON_CLOCK;
-
-            $parts = [];
-            $parts[] = "<fg=green>{$check} {$processedSinceLastSummary}</>";
-            $parts[] = "<fg=red>{$times} {$failedSinceLastSummary}</>";
-            $parts[] = "<fg=yellow>{$play} {$processing}</>";
-            $parts[] = "<fg=blue>{$clock} {$pending}</>";
-
-            $summary = 'Jobs: '.implode('/', $parts);
-            $this->statusLine('summary', $summary, $this->badgeInfo(), "{$workerCount}Wk");
-
-            $processedSinceLastSummary = 0;
-            $failedSinceLastSummary = 0;
-            $lastSummaryAt = time();
         }
     }
 
